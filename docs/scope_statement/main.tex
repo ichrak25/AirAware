@@ -1,1 +1,280 @@
+\documentclass[12pt,a4paper]{article}
 
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage{array}
+
+% Page layout
+\geometry{margin=2.5cm}
+\setlength{\parskip}{0.5em}
+\setlength{\parindent}{0pt}
+
+% Section formatting
+\titleformat{\section}{\Large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries}{\thesubsubsection}{1em}{}
+
+% Hyperlinks
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=cyan,
+    citecolor=blue
+}
+
+% Document
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{3cm}
+    {\Huge\bfseries Cahier des Charges\\[0.5cm]
+    Système de Surveillance Intelligente de la Qualité de l'Air Intérieur (Indoor AQI)}
+    \vfill
+    {\large Auteur: Votre Nom \\
+    Date: \today}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\section{Présentation du projet}
+\subsection{Contexte général}
+La qualité de l'air intérieur (QAI) constitue un enjeu majeur de santé publique, les individus passant en moyenne 90\% de leur temps dans des environnements clos. L'Organisation Mondiale de la Santé (OMS) identifie la pollution de l'air intérieur comme l'un des principaux facteurs de risque environnementaux, responsable de nombreuses pathologies respiratoires et cardiovasculaires.
+
+\subsection{Problématique identifiée}
+Les espaces intérieurs présentent des concentrations de polluants souvent supérieures à celles des environnements extérieurs, avec des impacts sanitaires significatifs :
+\begin{itemize}
+    \item \textbf{Particules fines (PM2.5/PM10)} : pénétration profonde dans les voies respiratoires, exacerbation de l'asthme et des allergies
+    \item \textbf{Dioxyde de carbone (CO₂)} : indicateur de confinement, provoquant fatigue, maux de tête et baisse de productivité au-delà de 1000 ppm
+    \item \textbf{Composés Organiques Volatils (COV)} : émissions de matériaux, mobilier et produits chimiques, causant irritations et troubles respiratoires
+    \item \textbf{Paramètres thermo hygrométriques} : influence directe sur le confort, la prolifération microbienne et la qualité de l'air perçue
+\end{itemize}
+
+\subsection{Besoin identifié}
+Absence de solutions accessibles et complètes permettant une surveillance continue, une analyse intelligente et des recommandations personnalisées pour l'amélioration de la qualité de l'air intérieur.
+
+\section{Objectifs stratégiques}
+\subsection{Objectif principal}
+Développer un écosystème technologique complet de surveillance, d'analyse et d'amélioration de la qualité de l'air intérieur, intégrant capteurs IoT, intelligence artificielle et interface utilisateur intuitive.
+
+\subsection{Objectifs spécifiques}
+\begin{itemize}
+    \item Mesurer en continu les principaux indicateurs de qualité d'air intérieur
+    \item Fournir des alertes préventives et recommandations personnalisées
+    \item Constituer une base de données longitudinale pour analyses prédictives
+    \item Développer une interface PWA ergonomique et accessible
+    \item Implémenter des modèles d'IA pour la détection d'anomalies et la prédiction
+\end{itemize}
+
+\section{Périmètre et marchés cibles}
+\subsection{Marchés primaires}
+\begin{itemize}
+    \item Secteur résidentiel : foyers avec personnes à risque (asthmatiques, allergiques, enfants en bas âge, personnes âgées)
+    \item Établissements d'enseignement : écoles primaires, collèges, crèches
+    \item Secteur tertiaire : bureaux, espaces de coworking, salles de réunion
+\end{itemize}
+
+\subsection{Marchés secondaires}
+\begin{itemize}
+    \item Établissements de santé : cabinets médicaux, salles d'attente, EHPAD
+    \item Secteur hôtelier : hôtels, résidences de tourisme
+    \item Espaces culturels : bibliothèques, musées, centres culturels
+\end{itemize}
+
+\section{Spécifications fonctionnelles}
+\subsection{Architecture système globale}
+\subsubsection{Couche Capteurs (Edge Layer)}
+\textbf{Capteurs intégrés :}
+\begin{itemize}
+    \item PMS5003/SDS011 : Mesure particules fines PM2.5 et PM10 (précision ±10 µg/m³)
+    \item MH-Z19B : Mesure CO₂ (gamme 400-5000 ppm, précision ±50 ppm)
+    \item MQ-135 : Détection COV, NH₃, fumées (sensibilité qualitative)
+    \item DHT22 : Température (-40°C à +80°C, ±0.5°C) et humidité relative (0-100\%, ±2\%)
+\end{itemize}
+
+\textbf{Gateway local (Raspberry Pi 4) :}
+\begin{itemize}
+    \item Collecte des données via interfaces UART/I2C/GPIO
+    \item Préprocessing et validation des données
+    \item Transmission sécurisée vers le cloud
+    \item Mode dégradé en cas de perte de connectivité
+\end{itemize}
+
+\subsubsection{Couche Communication}
+\begin{itemize}
+    \item Protocole primaire : MQTT over TLS pour la remontée des données
+    \item Protocole temps réel : WebSocket pour les alertes instantanées
+    \item Fréquence d'acquisition : 1 mesure/minute (paramétrable)
+    \item Sécurité : Chiffrement end-to-end, authentification par certificats
+\end{itemize}
+
+\subsubsection{Couche Backend Cloud}
+\textbf{API REST (Jakarta EE 10) :}
+\begin{itemize}
+    \item Endpoints RESTful pour CRUD opérations
+    \item Authentification JWT avec refresh tokens
+    \item Rate limiting et monitoring des API calls
+    \item Documentation OpenAPI 3.0
+\end{itemize}
+
+\textbf{Base de données NoSQL (MongoDB) :}
+\begin{itemize}
+    \item Collections optimisées pour les séries temporelles
+    \item Indexation sur timestamps et device\_id
+    \item Sharding horizontal pour la scalabilité
+    \item Retention policy configurable
+\end{itemize}
+
+\subsubsection{Couche Intelligence Artificielle (MLOps)}
+\begin{itemize}
+    \item Détection d'anomalies : DBSCAN et Z-score adaptatif
+    \item Prédiction court terme : ARIMA/LSTM (1-6h)
+    \item Classification qualité air : Random Forest pour scoring AQI personnalisé
+    \item Orchestration : MLflow pour versioning et monitoring
+\end{itemize}
+
+\subsubsection{Interface Utilisateur (PWA)}
+\begin{itemize}
+    \item Dashboard temps réel : visualisation multi-paramètres, graphiques interactifs, indicateurs KPI
+    \item Système d'alertes : push notifications natives, seuils personnalisables, historique
+\end{itemize}
+
+\subsection{Fonctionnalités détaillées}
+\begin{itemize}
+    \item Acquisition multi-paramètre synchronisée
+    \item Calibration automatique et détection de dérive
+    \item Validation croisée entre capteurs redondants
+    \item Gestion des valeurs aberrantes et données manquantes
+    \item Calcul d'indices composites (AQI personnalisé)
+    \item Analyse de corrélations entre paramètres
+    \item Détection de patterns temporels (cycles jour/nuit, saisonniers)
+    \item Benchmarking avec standards nationaux/internationaux
+    \item Système d'alertes intelligentes et recommandations personnalisées
+\end{itemize}
+
+\section{Spécifications techniques}
+\subsection{Contraintes technologiques}
+\begin{itemize}
+    \item \textbf{Stack technologique} : Jakarta EE 10, WildFly, MongoDB 6.0+, Eclipse Mosquitto, PWA (HTML5/CSS3/JS), Python 3.9+ pour ML
+    \item \textbf{Infrastructure} : Docker, Kubernetes, Azure Cloud
+\end{itemize}
+
+\subsection{Performances et scalabilité}
+\begin{itemize}
+    \item Latence API : < 100ms
+    \item Débit ingestion : 10,000 messages/sec
+    \item Disponibilité : 99.5\%
+    \item Architecture microservices, auto-scaling et sharding pour 1M+ devices
+\end{itemize}
+
+\section{Exigences non fonctionnelles}
+\begin{itemize}
+    \item Uptime : 99.5\%, MTTR < 30 min
+    \item Backup automatisé : RTO < 4h, RPO < 15 min
+    \item Latence bout-en-bout < 5s
+    \item Capacité simultanée : 10,000 utilisateurs
+    \item Optimisation PWA < 1MB, offline-first
+    \item Documentation technique et CI/CD automatisé
+    \item Interface responsive et accessible WCAG 2.1 AA
+\end{itemize}
+
+\section{Modèle économique}
+\subsection{Stratégie de monétisation}
+\begin{longtable}{|>{\raggedright}p{4cm}|>{\raggedright}p{6cm}|>{\raggedright}p{4cm}|}
+\hline
+\textbf{Type} & \textbf{Description} & \textbf{Prix} \\
+\hline
+Kit Basic & 1 capteur + gateway + configuration & 149€ \\
+Kit Advanced & Multi-capteurs + fonctionnalités étendues & 299€ \\
+Kit Enterprise & Déploiement multi-zones + API management & 499€ \\
+\hline
+\end{longtable}
+
+\subsection{Services SaaS}
+\begin{longtable}{|>{\raggedright}p{4cm}|>{\raggedright}p{6cm}|>{\raggedright}p{4cm}|}
+\hline
+\textbf{Plan} & \textbf{Description} & \textbf{Prix} \\
+\hline
+Freemium & Monitoring basique, 7 jours d'historique & 0€/mois \\
+Premium & Historique illimité, IA prédictive, alertes avancées & 9.99€/mois \\
+Professional & Multi-sites, reporting avancé, API business & 29.99€/mois \\
+Enterprise & SLA dédié, support prioritaire, customisation & Sur devis \\
+\hline
+\end{longtable}
+
+\subsection{Projection financière (3 ans)}
+\begin{itemize}
+    \item Année 1 : 500 kits, 50 abonnements Premium → CA 120K€
+    \item Année 2 : 2,500 kits, 400 abonnements → CA 650K€
+    \item Année 3 : 8,000 kits, 1,500 abonnements → CA 2.1M€
+\end{itemize}
+
+\section{Planning et livrables}
+\begin{longtable}{|>{\raggedright}p{3cm}|>{\raggedright}p{6cm}|>{\raggedright}p{6cm}|}
+\hline
+\textbf{Mois} & \textbf{Activités} & \textbf{Livrables} \\
+\hline
+1 & Planification et conception (CD, architecture, maquettes, géolocalisation) & Cahier des charges finalisé, schéma d'architecture, maquettes UI/UX, spécifications géolocalisation \\
+2 & Développement backend, PWA, collecte données, module géolocalisation & Prototype backend, première version PWA, module géolocalisation, données simulées \\
+3 & Intégration et tests, alertes AQI & Version Beta intégrée, carte interactive avancée, rapport de tests \\
+4 & Optimisation, déploiement pilote & Version stable système, déploiement pilote, feedback utilisateurs, rapport final et roadmap V2 \\
+\hline
+\end{longtable}
+
+\section{Critères de succès}
+\subsection{KPIs techniques}
+\begin{itemize}
+    \item Précision mesures : ±10\%
+    \item Uptime système : > 99.5\%
+    \item User satisfaction : > 4.5/5
+    \item Time to value : < 24h post-installation
+\end{itemize}
+
+\subsection{KPIs business}
+\begin{itemize}
+    \item Taux d'adoption Premium : > 15\%
+    \item Customer retention : > 80\% après 12 mois
+    \item NPS : > 50
+    \item ROI client documenté : réduction 20\% incidents respiratoires
+\end{itemize}
+
+\subsection{Impact sociétal}
+\begin{itemize}
+    \item Sensibilisation QAI : 10,000+ utilisateurs
+    \item Prévention sanitaire : réduction épisodes asthmatiques
+    \item Standards industrie : contribution normalisation IoT
+\end{itemize}
+
+\section{Risques et mitigation}
+\subsection{Risques techniques}
+\begin{itemize}
+    \item Dérive capteurs → calibration automatique + maintenance préventive
+    \item Scalabilité cloud → architecture microservices + monitoring
+    \item Sécurité IoT → Security by design + audits réguliers
+\end{itemize}
+
+\subsection{Risques marché}
+\begin{itemize}
+    \item Concurrence BigTech → différenciation par expertise + partenariats
+    \item Adoption lente → stratégie freemium + ROI démontrable
+    \item Réglementation → veille normative + compliance proactive
+\end{itemize}
+
+\subsection{Risques opérationnels}
+\begin{itemize}
+    \item Supply chain hardware → multi-sourcing + stock sécurité
+    \item Expertise rare → formation équipe + partenariats techniques
+    \item Cash-flow → levée fonds + revenus SaaS récurrents
+\end{itemize}
+
+\end{document}
