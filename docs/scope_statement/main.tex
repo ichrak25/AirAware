@@ -2,48 +2,99 @@
 
 % Packages
 \usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
-\usepackage[french]{babel}
-\usepackage{geometry}
+\usepackage[english]{babel}
 \usepackage{graphicx}
 \usepackage{hyperref}
-\usepackage{longtable}
-\usepackage{enumitem}
-\usepackage{titlesec}
+\usepackage{listings}
 \usepackage{xcolor}
-\usepackage{array}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{tocloft}
+\usepackage{titlesec}
+\usepackage{float}
 
-% Page layout
-\geometry{margin=2.5cm}
-\setlength{\parskip}{0.5em}
-\setlength{\parindent}{0pt}
-
-% Section formatting
-\titleformat{\section}{\Large\bfseries}{\thesection}{1em}{}
-\titleformat{\subsection}{\large\bfseries}{\thesubsection}{1em}{}
-\titleformat{\subsubsection}{\normalsize\bfseries}{\thesubsubsection}{1em}{}
-
-% Hyperlinks
-\hypersetup{
-    colorlinks=true,
-    linkcolor=blue,
-    urlcolor=cyan,
-    citecolor=blue
+% Page geometry
+\geometry{
+a4paper,
+left=2.5cm,
+right=2.5cm,
+top=3cm,
+bottom=3cm
 }
 
-% Document
+% Listings configuration for code
+\lstset{
+basicstyle=\ttfamily\small,
+breaklines=true,
+frame=single,
+language=Python,
+showstringspaces=false,
+commentstyle=\color{gray},
+keywordstyle=\color{blue},
+stringstyle=\color{red},
+numbers=left,
+numberstyle=\tiny\color{gray},
+stepnumber=1,
+numbersep=5pt,
+backgroundcolor=\color{white},
+tabsize=4,
+captionpos=b
+}
+
+% Header and footer
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\thepage}
+\lhead{Scope Statement}
+\lhead{INDOOR AIR QUALITY INTELLIGENT SURVEILLANCE SYSTEM: AIR-AWARE}
+\renewcommand{\headrulewidth}{0.4pt}
+
 \begin{document}
 
+% -------------------- Page de Garde ----------------------
+\newcommand\titleofdoc{\bfseries Rapport PM }
 \begin{titlepage}
-    \centering
-    \vspace*{3cm}
-    {\Huge\bfseries Cahier des Charges\\[0.5cm]
-    Système de Surveillance Intelligente de la Qualité de l'Air Intérieur (Indoor AQI)}
-    \vfill
-    {\large Auteur: Votre Nom \\
-    Date: \today}
-\end{titlepage}
+\centering
 
+\vspace*{2cm} % * force l'espacement même dans titlepage
+\includegraphics[width=0.4\textwidth]{supcom.png}%
+
+
+\vspace{2cm}
+
+
+
+
+\vspace{1cm}
+\rule{\textwidth}{0.4pt}
+\vspace{0.3cm}
+
+\begin{center}
+{\Huge \textbf{\scshape Scope Statement}}
+\\
+
+{\Huge \textbf{\scshape AIR-AWARE: Indoor Air Quality Intelligent Surveillance System}}
+\end{center}
+
+\vspace{0.3cm}
+\rule{\textwidth}{0.4pt}
+
+\vspace{1.5cm}
+
+\begin{center}
+\textbf{\textit{Realised by :}}\\[0.2cm]
+{Fatma Abid \& Ichrak Aouadni}\\[0.2cm]
+{Ahmed Guermazi \& Adem Bakey}\\[0.2cm]
+\vspace{1cm}
+
+\textbf{\textit{Faculty Advisor :}}\\[0.2cm]
+Mohamed Becha Kaaniche
+\end{center}
+
+\vfill
+
+{\large\textbf{2025/2026} }
+\end{titlepage}
 \tableofcontents
 \newpage
 
