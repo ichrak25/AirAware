@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
@@ -37,3 +38,6 @@ build/
 
 ### Mac OS ###
 .DS_Store
+=======
+
+>>>>>>> 4f7ccd044f4ce786c5697e0d7f81690aca0cfd01
