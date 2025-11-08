@@ -1,6 +1,7 @@
 package tn.airaware.api.repositories;
 
 import jakarta.data.repository.Repository;
+import jakarta.nosql.mapping.Query;
 import tn.airaware.api.entities.Alert;
 
 
@@ -14,4 +15,6 @@ public interface AlertRepository extends jakarta.nosql.mapping.Repository<Alert,
     List<Alert> findBySensorId(String sensorId);
     List<Alert> findByResolved(boolean resolved);
     List<Alert> findBySeverity(String severity);
+    @Query("SELECT * FROM alert")
+    List<Alert> findAll();
 }
