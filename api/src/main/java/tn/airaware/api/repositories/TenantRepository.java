@@ -1,5 +1,6 @@
 package tn.airaware.api.repositories;
 
+import jakarta.nosql.mapping.Query;
 import jakarta.nosql.mapping.Repository;
 import tn.airaware.api.entities.Tenant;
 import java.util.List;
@@ -10,4 +11,7 @@ import java.util.List;
 public interface TenantRepository extends Repository<Tenant, String> {
     List<Tenant> findByCountry(String country);
     Tenant findByOrganizationName(String organizationName);
+    
+    @Query("SELECT * FROM tenant")
+    List<Tenant> findAll();
 }

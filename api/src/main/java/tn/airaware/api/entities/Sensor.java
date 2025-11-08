@@ -121,4 +121,6 @@ public class Sensor extends Identity implements Serializable {
                 ", tenant=" + (tenant != null ? tenant.getOrganizationName() : "null") +
                 '}';
     }
+
+
 }

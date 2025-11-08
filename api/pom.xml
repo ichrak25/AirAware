@@ -113,32 +113,28 @@
           <version>0.13.0</version>
           <scope>runtime</scope>
       </dependency>
-      <dependency>
-          <groupId>org.junit.jupiter</groupId>
-          <artifactId>junit-jupiter-api</artifactId>
-          <version>${junit.version}</version>
-          <scope>test</scope>
-      </dependency>
-      <dependency>
-          <groupId>org.junit.jupiter</groupId>
-          <artifactId>junit-jupiter-engine</artifactId>
-          <version>${junit.version}</version>
-          <scope>test</scope>
-      </dependency>
+
+
       <dependency>
           <groupId>de.mkammerer</groupId>
           <artifactId>argon2-jvm</artifactId>
           <version>2.12</version>
       </dependency>
       <dependency>
-          <groupId>jakarta.nosql</groupId>
-          <artifactId>jakarta.nosql-api</artifactId>
-          <version>1.0.0-M1</version>
-      </dependency>
-      <dependency>
           <groupId>jakarta.data</groupId>
           <artifactId>jakarta.data-api</artifactId>
           <version>1.0.0-RC1</version>
+      </dependency>
+      <dependency>
+          <groupId>org.eclipse.jnosql.mapping</groupId>
+          <artifactId>mapping-document</artifactId>
+          <version>1.0.0-b4</version>
+      </dependency>
+
+      <dependency>
+          <groupId>org.eclipse.microprofile.config</groupId>
+          <artifactId>microprofile-config-api</artifactId>
+          <version>3.1</version> <!-- or latest stable version -->
       </dependency>
       <dependency>
           <groupId>org.eclipse.jnosql.databases</groupId>
@@ -148,14 +144,18 @@
 
       <dependency>
           <groupId>org.eclipse.jnosql.mapping</groupId>
-          <artifactId>mapping-document</artifactId>
-          <version>1.0.0-b4</version>
+          <artifactId>jnosql-mapping-core</artifactId>
+          <version>1.1.10</version>
       </dependency>
+
       <dependency>
-          <groupId>org.eclipse.microprofile.config</groupId>
-          <artifactId>microprofile-config-api</artifactId>
-          <version>3.1</version> <!-- or latest stable version -->
+          <groupId>org.eclipse.jnosql.mapping</groupId>
+          <artifactId>jnosql-mapping-document</artifactId>
+          <version>1.1.10</version>
       </dependency>
+
+
+
 
   </dependencies>
 
@@ -177,4 +177,12 @@
         </plugin>
     </plugins>
   </build>
+    <repositories>
+        <repository>
+            <id>eclipse-snapshots</id>
+            <name>Eclipse Snapshots Repository</name>
+            <url>https://repo.eclipse.org/content/groups/nosql/</url>
+        </repository>
+    </repositories>
+
 </project>
