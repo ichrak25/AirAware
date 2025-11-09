@@ -58,18 +58,6 @@
       <version>2.2.0</version>
       <scope>provided</scope>
     </dependency>
-<dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-api</artifactId>
-      <version>${junit.version}</version>
-      <scope>test</scope>
-    </dependency>
-      <dependency>
-        <groupId>org.junit.jupiter</groupId>
-        <artifactId>junit-jupiter-engine</artifactId>
-        <version>${junit.version}</version>
-        <scope>test</scope>
-      </dependency>
       <dependency>
           <groupId>jakarta.platform</groupId>
           <artifactId>jakarta.jakartaee-api</artifactId>
@@ -142,13 +130,6 @@
           <artifactId>jnosql-mongodb</artifactId>
           <version>1.1.10</version>
       </dependency>
-
-      <dependency>
-          <groupId>org.eclipse.jnosql.mapping</groupId>
-          <artifactId>jnosql-mapping-core</artifactId>
-          <version>1.1.10</version>
-      </dependency>
-
       <dependency>
           <groupId>org.eclipse.jnosql.mapping</groupId>
           <artifactId>jnosql-mapping-document</artifactId>
@@ -159,20 +140,87 @@
           <artifactId>jnosql-mapping-core</artifactId>
           <version>${jnosql.version}</version>
       </dependency>
-
-
-
-
-
+      <dependency>
+          <groupId>org.junit.jupiter</groupId>
+          <artifactId>junit-jupiter-api</artifactId>
+          <version>6.0.1</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.junit.jupiter</groupId>
+          <artifactId>junit-jupiter-engine</artifactId>
+          <version>6.0.1</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>io.rest-assured</groupId>
+          <artifactId>rest-assured</artifactId>
+          <version>5.5.6</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>io.rest-assured</groupId>
+          <artifactId>json-path</artifactId>
+          <version>5.5.6</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>io.rest-assured</groupId>
+          <artifactId>json-schema-validator</artifactId>
+          <version>5.5.6</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.testcontainers</groupId>
+          <artifactId>testcontainers</artifactId>
+          <version>2.0.1</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.testcontainers</groupId>
+          <artifactId>junit-jupiter</artifactId>
+          <version>1.21.3</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.testcontainers</groupId>
+          <artifactId>mongodb</artifactId>
+          <version>1.21.3</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.hamcrest</groupId>
+          <artifactId>hamcrest</artifactId>
+          <version>3.0</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.assertj</groupId>
+          <artifactId>assertj-core</artifactId>
+          <version>4.0.0-M1</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.mockito</groupId>
+          <artifactId>mockito-core</artifactId>
+          <version>5.20.0</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.mockito</groupId>
+          <artifactId>mockito-junit-jupiter</artifactId>
+          <version>5.20.0</version>
+          <scope>test</scope>
+      </dependency>
   </dependencies>
 
-  <build>
+<build>
     <plugins>
-<plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-war-plugin</artifactId>
-        <version>3.4.0</version>
-      </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-war-plugin</artifactId>
+            <version>3.4.0</version>
+        </plugin>
         <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-compiler-plugin</artifactId>
@@ -181,6 +229,30 @@
                 <source>16</source>
                 <target>16</target>
             </configuration>
+        </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>3.5.4</version>
+            <configuration>
+                <includes>
+                    <include>**/*Test.java</include>
+                    <include>**/*Tests.java</include>
+                </includes>
+            </configuration>
+        </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>3.5.4</version>
+            <executions>
+                <execution>
+                    <goals>
+                        <goal>integration-test</goal>
+                        <goal>verify</goal>
+                    </goals>
+                </execution>
+            </executions>
         </plugin>
     </plugins>
   </build>
