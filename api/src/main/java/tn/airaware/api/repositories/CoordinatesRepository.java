@@ -6,5 +6,6 @@ import tn.airaware.api.entities.Coordinates;
 /**
  * Repository for Coordinates entity — usually used via embedded queries.
  */
+
 public interface CoordinatesRepository extends Repository<Coordinates, String> {
 }

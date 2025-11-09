@@ -6,6 +6,7 @@ import tn.airaware.api.entities.Identity;
 import tn.airaware.api.entities.Sensor;
 import java.util.List;
 
+
 /**
  * Repository for Sensor entity — handles sensor metadata and lookup.
  */

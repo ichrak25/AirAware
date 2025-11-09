@@ -63,7 +63,7 @@ public class Alert extends Identity implements Serializable {
                 ", triggeredAt=" + triggeredAt +
                 ", sensorId='" + sensorId + '\'' +
                 ", resolved=" + resolved +
-                ", reading=" + (reading != null ? reading.getSensorId() : "null") +
+                ", reading=" + (reading != null ? reading.toString() : "null") +
                 '}';
     }
 }
