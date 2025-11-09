@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
  * REST Controller for Reading management
  * Handles all sensor reading data - temperature, humidity, CO2, VOC, PM2.5, PM10
  */
-@Path("/api/readings")
+@Path("/readings")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class ReadingController {

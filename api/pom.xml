@@ -212,6 +212,19 @@
           <version>5.20.0</version>
           <scope>test</scope>
       </dependency>
+      <!-- JUnit Platform Suite (for test suites) -->
+      <dependency>
+          <groupId>org.junit.platform</groupId>
+          <artifactId>junit-platform-suite-api</artifactId>
+          <version>6.0.1</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.junit.platform</groupId>
+          <artifactId>junit-platform-suite-engine</artifactId>
+          <version>6.0.1</version>
+          <scope>test</scope>
+      </dependency>
   </dependencies>
 
 <build>
@@ -235,21 +248,51 @@
             <artifactId>maven-surefire-plugin</artifactId>
             <version>3.5.4</version>
             <configuration>
-                <includes>
-                    <include>**/*Test.java</include>
-                    <include>**/*Tests.java</include>
-                </includes>
+                <skip>true</skip>
             </configuration>
         </plugin>
         <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-failsafe-plugin</artifactId>
             <version>3.5.4</version>
+            <configuration>
+                <includes>
+                    <include>**/*Test.java</include>
+                    <include>**/*Tests.java</include>
+                </includes>
+            </configuration>
             <executions>
                 <execution>
                     <goals>
                         <goal>integration-test</goal>
                         <goal>verify</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+        <plugin>
+            <groupId>org.wildfly.plugins</groupId>
+            <artifactId>wildfly-maven-plugin</artifactId>
+            <version>5.1.5.Final</version>
+            <configuration>
+                <hostname>localhost</hostname>
+                <port>9990</port>
+                <username>admin</username>
+                <password>admin</password>
+            </configuration>
+            <executions>
+                <execution>
+                    <id>deploy</id>
+                    <phase>pre-integration-test</phase>
+                    <goals>
+                        <goal>deploy</goal>
+                    </goals>
+                </execution>
+                <execution>
+                    <id>undeploy</id>
+                    <phase>post-integration-test</phase>
+                    <goals>
+                        <goal>undeploy</goal>
                     </goals>
                 </execution>
             </executions>

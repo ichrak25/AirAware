@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
  * REST Controller for Sensor management
  * Handles sensor registration, status monitoring, and device lifecycle
  */
-@Path("/api/sensors")
+@Path("/sensors")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class SensorController {

@@ -14,7 +14,7 @@ import java.util.logging.Logger;
  * REST Controller for Alert management
  * Provides endpoints for creating, retrieving, updating, and deleting alerts
  */
-@Path("/api/alerts")
+@Path("/alerts")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class AlertController {

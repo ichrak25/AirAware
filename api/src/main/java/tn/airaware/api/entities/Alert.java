@@ -2,21 +2,15 @@ package tn.airaware.api.entities;
 
 import jakarta.nosql.Column;
 import jakarta.nosql.Entity;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.io.Serializable;
 import java.time.Instant;
 
 /**
- * Alert entity — represents a warning triggered when air quality exceeds a defined threshold.
+ * Alert entity – represents a warning triggered when air quality exceeds a defined threshold.
  */
-@Setter
-@Getter
 @Entity("alerts")
 public class Alert extends Identity implements Serializable {
 
-    // --- Getters & Setters ---
     @Column("type")
     private String type; // e.g. CO2_HIGH, PM25_HIGH, VOC_ALERT
 
@@ -51,6 +45,63 @@ public class Alert extends Identity implements Serializable {
         this.message = message;
         this.sensorId = sensorId;
         this.reading = reading;
+    }
+
+    // --- Getters & Setters ---
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public String getSeverity() {
+        return severity;
+    }
+
+    public void setSeverity(String severity) {
+        this.severity = severity;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public Instant getTriggeredAt() {
+        return triggeredAt;
+    }
+
+    public void setTriggeredAt(Instant triggeredAt) {
+        this.triggeredAt = triggeredAt;
+    }
+
+    public String getSensorId() {
+        return sensorId;
+    }
+
+    public void setSensorId(String sensorId) {
+        this.sensorId = sensorId;
+    }
+
+    public Reading getReading() {
+        return reading;
+    }
+
+    public void setReading(Reading reading) {
+        this.reading = reading;
+    }
+
+    public boolean isResolved() {
+        return resolved;
+    }
+
+    public void setResolved(boolean resolved) {
+        this.resolved = resolved;
     }
 
     // --- toString ---

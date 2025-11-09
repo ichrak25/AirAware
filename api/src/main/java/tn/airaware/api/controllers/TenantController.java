@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  * REST Controller for Tenant management
  * Handles organization/owner registration, profile management, and tenant lifecycle
  */
-@Path("/api/tenants")
+@Path("/tenants")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class TenantController {
