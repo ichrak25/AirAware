@@ -7,7 +7,7 @@ import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
-import tn.airaware.iam.entities.Identity;
+import tn.airaware.core.entities.Identity;
 import tn.airaware.iam.services.IdentityServices;
 import tn.airaware.iam.security.JwtManager;
 

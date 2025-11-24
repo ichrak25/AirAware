@@ -3,6 +3,7 @@ package tn.airaware.api.entities;
 import jakarta.nosql.Column;
 import jakarta.nosql.Entity;
 import java.io.Serializable;
+import tn.airaware.core.entities.Identity;
 import java.time.Instant;
 
 /**

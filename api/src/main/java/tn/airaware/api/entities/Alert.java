@@ -2,17 +2,25 @@ package tn.airaware.api.entities;
 
 import jakarta.nosql.Column;
 import jakarta.nosql.Entity;
+import jakarta.nosql.Id;
+
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.UUID;
 
 /**
- * Alert entity – represents a warning triggered when air quality exceeds a defined threshold.
+ * Alert entity - represents a warning triggered when thresholds are exceeded
+ * NOTE: No longer extends Identity - alerts are events, not users!
  */
 @Entity("alerts")
-public class Alert extends Identity implements Serializable {
+public class Alert implements Serializable {
+
+    @Id
+    @Column("_id")
+    private String id;
 
     @Column("type")
-    private String type; // e.g. CO2_HIGH, PM25_HIGH, VOC_ALERT
+    private String type; // CO2_HIGH, PM25_HIGH, VOC_ALERT, etc.
 
     @Column("severity")
     private String severity; // INFO, WARNING, CRITICAL
@@ -32,13 +40,16 @@ public class Alert extends Identity implements Serializable {
     @Column("resolved")
     private boolean resolved = false;
 
-    // --- Constructors ---
+    // ==================== Constructors ====================
+
     public Alert() {
-        super();
+        this.id = UUID.randomUUID().toString();
         this.triggeredAt = Instant.now();
+        this.resolved = false;
     }
 
-    public Alert(String type, String severity, String message, String sensorId, Reading reading) {
+    public Alert(String type, String severity, String message,
+                 String sensorId, Reading reading) {
         this();
         this.type = type;
         this.severity = severity;
@@ -47,7 +58,16 @@ public class Alert extends Identity implements Serializable {
         this.reading = reading;
     }
 
-    // --- Getters & Setters ---
+    // ==================== Getters & Setters ====================
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
     public String getType() {
         return type;
     }
@@ -104,11 +124,13 @@ public class Alert extends Identity implements Serializable {
         this.resolved = resolved;
     }
 
-    // --- toString ---
+    // ==================== toString ====================
+
     @Override
     public String toString() {
         return "Alert{" +
-                "type='" + type + '\'' +
+                "id='" + id + '\'' +
+                ", type='" + type + '\'' +
                 ", severity='" + severity + '\'' +
                 ", message='" + message + '\'' +
                 ", triggeredAt=" + triggeredAt +

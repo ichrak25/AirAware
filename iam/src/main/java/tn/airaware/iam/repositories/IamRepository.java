@@ -3,6 +3,7 @@ package tn.airaware.iam.repositories;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import tn.airaware.iam.enums.Role;
+import tn.airaware.core.entities.Identity;
 
 import java.util.HashSet;
 

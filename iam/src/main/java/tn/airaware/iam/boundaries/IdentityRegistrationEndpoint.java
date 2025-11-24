@@ -3,7 +3,7 @@ package tn.airaware.iam.boundaries;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
-import tn.airaware.api.repositories.TenantRepository;
+import tn.airaware.iam.repositories.OAuthClientRepository;
 import tn.airaware.iam.services.IdentityServices;
 
 import java.io.InputStream;
@@ -24,7 +24,8 @@ public class IdentityRegistrationEndpoint {
     IdentityServices identityServices;
 
     @Inject
-    TenantRepository tenantRepository;
+    OAuthClientRepository oauthClientRepository;
+
 
     /**
      * Show registration authorization page
@@ -36,21 +37,17 @@ public class IdentityRegistrationEndpoint {
         try {
             MultivaluedMap<String, String> params = uriInfo.getQueryParameters();
 
-            // Validate client_id (tenant)
+            // Validate client_id (OAuth client)
             String clientId = params.getFirst("client_id");
             if (isNullOrEmpty(clientId)) {
                 return informUserAboutError("Invalid client_id: " + clientId);
             }
 
-            var tenant = tenantRepository.findByOrganizationName(clientId);
-            if (tenant == null) {
-                return informUserAboutError("Invalid tenant/organization: " + clientId);
+            // Validate OAuth client exists and is active
+            var oauthClient = oauthClientRepository.findByClientId(clientId);
+            if (oauthClient.isEmpty() || !oauthClient.get().isActive()) {
+                return informUserAboutError("Invalid or inactive OAuth client: " + clientId);
             }
-
-            // Validate redirectUri (if tenant has one configured)
-            String redirectUri = params.getFirst("redirect_uri");
-            // Note: Tenant entity uses different field names than SmartHome
-            // Adapt validation if needed based on your Tenant entity
 
             // Stream the registration page
             StreamingOutput stream = createHtmlResponse("/Register.html");

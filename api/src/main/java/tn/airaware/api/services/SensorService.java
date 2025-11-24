@@ -39,7 +39,7 @@ public class SensorService {
 
         // Embed coordinates (if available)
         if (sensor.getLocation() != null) {
-            Coordinates loc = sensor.getLocation();
+            tn.airaware.core.entities.Coordinates loc = sensor.getLocation();
             doc.append("location", new Document()
                     .append("latitude", loc.getLatitude())
                     .append("longitude", loc.getLongitude()));
@@ -109,7 +109,7 @@ public class SensorService {
         // Location mapping
         Document locDoc = doc.get("location", Document.class);
         if (locDoc != null) {
-            Coordinates loc = new Coordinates();
+            tn.airaware.core.entities.Coordinates loc = new tn.airaware.core.entities.Coordinates();
             loc.setLatitude(locDoc.getDouble("latitude"));
             loc.setLongitude(locDoc.getDouble("longitude"));
             sensor.setLocation(loc);

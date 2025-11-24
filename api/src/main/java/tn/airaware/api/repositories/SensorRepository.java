@@ -2,7 +2,6 @@ package tn.airaware.api.repositories;
 
 import jakarta.data.repository.Repository;
 import jakarta.nosql.mapping.Query;
-import tn.airaware.api.entities.Identity;
 import tn.airaware.api.entities.Sensor;
 import java.util.List;
 

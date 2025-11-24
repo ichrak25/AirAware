@@ -2,14 +2,20 @@ package tn.airaware.api.entities;
 
 import jakarta.nosql.Column;
 import jakarta.nosql.Entity;
+import jakarta.nosql.Id;
 import java.io.Serializable;
+import java.util.UUID;
 
 /**
- * Tenant entity — represents an organization or owner of AirAware devices.
- * Extends Identity to inherit ID, credentials, and metadata fields.
+ * Tenant entity - represents an organization/owner of AirAware devices
+ * NOTE: Does NOT extend Identity anymore - that was causing confusion
  */
 @Entity("tenants")
-public class Tenant extends Identity implements Serializable {
+public class Tenant implements Serializable {
+
+    @Id
+    @Column("_id")
+    private String id;
 
     @Column("organizationName")
     private String organizationName;
@@ -29,22 +35,33 @@ public class Tenant extends Identity implements Serializable {
     @Column("active")
     private boolean active = true;
 
-    // --- Constructors ---
+    // ==================== Constructors ====================
+
     public Tenant() {
-        super();
+        this.id = UUID.randomUUID().toString();
+        this.active = true;
     }
 
-    public Tenant(String organizationName, String contactEmail, String contactPhone, String address, String country) {
-        super();
+    public Tenant(String organizationName, String contactEmail, String contactPhone,
+                  String address, String country) {
+        this();
         this.organizationName = organizationName;
         this.contactEmail = contactEmail;
         this.contactPhone = contactPhone;
         this.address = address;
         this.country = country;
-        this.active = true;
     }
 
-    // --- Getters & Setters ---
+    // ==================== Getters & Setters ====================
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
     public String getOrganizationName() {
         return organizationName;
     }
@@ -93,11 +110,13 @@ public class Tenant extends Identity implements Serializable {
         this.active = active;
     }
 
-    // --- toString ---
+    // ==================== toString ====================
+
     @Override
     public String toString() {
         return "Tenant{" +
-                "organizationName='" + organizationName + '\'' +
+                "id='" + id + '\'' +
+                ", organizationName='" + organizationName + '\'' +
                 ", contactEmail='" + contactEmail + '\'' +
                 ", contactPhone='" + contactPhone + '\'' +
                 ", address='" + address + '\'' +

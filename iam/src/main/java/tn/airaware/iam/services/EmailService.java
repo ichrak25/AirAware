@@ -16,11 +16,17 @@ import java.util.logging.Logger;
  * Email Service for AirAware
  * Handles account activation, alerts, and notifications
  */
+import jakarta.inject.Inject;
 @ApplicationScoped
 public class EmailService {
 
     private static final Logger LOGGER = Logger.getLogger(EmailService.class.getName());
-    private static final Config CONFIG = ConfigProvider.getConfig();
+    private final Config config;
+    private final String smtpHost;
+    private final int smtpPort;
+    private final String smtpUser;
+    private final String smtpPassword;
+    private final boolean startTlsEnabled;
 
     private static final String SMTP_HOST_KEY = "smtp.host";
     private static final String SMTP_PORT_KEY = "smtp.port";
@@ -28,11 +34,17 @@ public class EmailService {
     private static final String SMTP_PASSWORD_KEY = "smtp.password";
     private static final String SMTP_STARTTLS_KEY = "smtp.starttls.enable";
 
-    private final String smtpHost = getConfigValue(SMTP_HOST_KEY, String.class);
-    private final int smtpPort = getConfigValue(SMTP_PORT_KEY, Integer.class);
-    private final String smtpUser = getConfigValue(SMTP_USERNAME_KEY, String.class);
-    private final String smtpPassword = getConfigValue(SMTP_PASSWORD_KEY, String.class);
-    private final boolean startTlsEnabled = getConfigValue(SMTP_STARTTLS_KEY, Boolean.class);
+    @Inject
+    public EmailService(Config config) {
+        this.config = config;
+        this.smtpHost = getConfigValue(SMTP_HOST_KEY, String.class);
+        this.smtpPort = getConfigValue(SMTP_PORT_KEY, Integer.class);
+        this.smtpUser = getConfigValue(SMTP_USERNAME_KEY, String.class);
+        this.smtpPassword = getConfigValue(SMTP_PASSWORD_KEY, String.class);
+        this.startTlsEnabled = getConfigValue(SMTP_STARTTLS_KEY, Boolean.class);
+    }
+
+
 
     /**
      * Send email with custom content
@@ -132,7 +144,7 @@ public class EmailService {
     }
 
     private <T> T getConfigValue(String propertyName, Class<T> propertyType) {
-        return CONFIG.getOptionalValue(propertyName, propertyType).orElseThrow(() ->
+        return config.getOptionalValue(propertyName, propertyType).orElseThrow(() ->
                 new IllegalArgumentException("Missing required configuration: " + propertyName));
     }
 }

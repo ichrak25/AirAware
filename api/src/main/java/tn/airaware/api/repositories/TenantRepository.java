@@ -1,19 +1,21 @@
 package tn.airaware.api.repositories;
 
-import jakarta.nosql.mapping.Query;
-import jakarta.nosql.mapping.Repository;
+import jakarta.data.repository.CrudRepository;
+import jakarta.data.repository.Repository;
 import tn.airaware.api.entities.Tenant;
 
 import java.util.List;
 
 /**
- * Repository for Tenant entity — manages organizations/owners.
+ * Repository for Tenant (organization) management
+ * Used by the API module for sensor ownership
  */
-@jakarta.data.repository.Repository
-public interface TenantRepository extends Repository<Tenant, String> {
-    List<Tenant> findByCountry(String country);
+@Repository
+public interface TenantRepository extends CrudRepository<Tenant, String> {
+
     Tenant findByOrganizationName(String organizationName);
 
-    @Query("SELECT * FROM tenant")
-    List<Tenant> findAll();
+    List<Tenant> findByCountry(String country);
+
+    List<Tenant> findByActive(boolean active);
 }

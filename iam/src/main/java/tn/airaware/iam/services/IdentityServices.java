@@ -4,10 +4,10 @@ import jakarta.ejb.EJBException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.tuple.Pair;
-import tn.airaware.iam.entities.Identity;
+import tn.airaware.core.entities.Identity;
 import tn.airaware.iam.enums.Role;
 import tn.airaware.iam.repositories.IdentityRepository;
-import tn.airaware.iam.security.Argon2Utils;
+import tn.airaware.core.security.Argon2Utils;
 
 import java.security.SecureRandom;
 import java.time.Instant;
@@ -186,7 +186,7 @@ public class IdentityServices {
         Identity identity = new Identity();
         identity.setUsername(username);
         identity.setEmail(email);
-        identity.setCreationDate(Instant.now().toString()); // Convert Instant to String
+        identity.setCreationDate(Instant.now()); // Now using Instant directly
         identity.setRoles(Role.VIEWER.getValue()); // Default role for new users
         identity.setScopes("sensor:read alert:read dashboard:view");
         identity.hashPassword(password, argon2Utils);

@@ -13,6 +13,7 @@
     <modules>
         <module>api</module>
         <module>iam</module> <!-- crée ce dossier pour ton module IAM -->
+        <module>core</module>
     </modules>
 
 </project>

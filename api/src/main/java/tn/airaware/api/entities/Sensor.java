@@ -3,16 +3,22 @@ package tn.airaware.api.entities;
 import jakarta.nosql.Column;
 import jakarta.nosql.Entity;
 import jakarta.nosql.Id;
+import tn.airaware.core.entities.Coordinates;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.UUID;
 
 /**
- * Represents an AirAware sensor device.
- * Stores metadata, location, and ownership information.
+ * Sensor entity - represents an AirAware IoT device
+ * NOTE: No longer extends Identity - sensors are not users!
  */
 @Entity("sensors")
-public class Sensor extends Identity implements Serializable {
+public class Sensor implements Serializable {
+
+    @Id
+    @Column("_id")
+    private String id;
 
     @Column("deviceId")
     private String deviceId;
@@ -24,7 +30,7 @@ public class Sensor extends Identity implements Serializable {
     private String description;
 
     @Column("status")
-    private String status; // e.g., ACTIVE, INACTIVE, OFFLINE
+    private String status; // ACTIVE, INACTIVE, OFFLINE, MAINTENANCE
 
     @Column("lastUpdate")
     private Instant lastUpdate;
@@ -35,14 +41,16 @@ public class Sensor extends Identity implements Serializable {
     @Column("tenant")
     private Tenant tenant;
 
-    // --- Constructors ---
+    // ==================== Constructors ====================
+
     public Sensor() {
-        super();
+        this.id = UUID.randomUUID().toString();
         this.status = "ACTIVE";
         this.lastUpdate = Instant.now();
     }
 
-    public Sensor(String deviceId, String model, String description, Coordinates location, Tenant tenant) {
+    public Sensor(String deviceId, String model, String description,
+                  Coordinates location, Tenant tenant) {
         this();
         this.deviceId = deviceId;
         this.model = model;
@@ -51,7 +59,16 @@ public class Sensor extends Identity implements Serializable {
         this.tenant = tenant;
     }
 
-    // --- Getters & Setters ---
+    // ==================== Getters & Setters ====================
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
     public String getDeviceId() {
         return deviceId;
     }
@@ -108,11 +125,13 @@ public class Sensor extends Identity implements Serializable {
         this.tenant = tenant;
     }
 
-    // --- toString ---
+    // ==================== toString ====================
+
     @Override
     public String toString() {
         return "Sensor{" +
-                "deviceId='" + deviceId + '\'' +
+                "id='" + id + '\'' +
+                ", deviceId='" + deviceId + '\'' +
                 ", model='" + model + '\'' +
                 ", description='" + description + '\'' +
                 ", status='" + status + '\'' +
@@ -121,6 +140,4 @@ public class Sensor extends Identity implements Serializable {
                 ", tenant=" + (tenant != null ? tenant.getOrganizationName() : "null") +
                 '}';
     }
-
-
 }
