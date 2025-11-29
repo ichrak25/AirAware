@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import tn.airaware.api.entities.Reading;
 import tn.airaware.api.services.ReadingService;
 import java.nio.charset.StandardCharsets;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;  // ADD THIS IMPORT
 
 @ApplicationScoped
 public class MqttListenerService implements MqttCallback {
@@ -23,8 +24,8 @@ public class MqttListenerService implements MqttCallback {
     @Inject
     private ReadingService readingService;
 
-    private final ObjectMapper mapper = new ObjectMapper();
-
+    private final ObjectMapper mapper = new ObjectMapper()
+            .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
     // This ensures the bean is initialized eagerly when the application starts
     public void onStart(@Observes @Initialized(ApplicationScoped.class) Object init) {
         System.out.println("===========================================");

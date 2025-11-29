@@ -1,0 +1,8 @@
+{
+  "scan": {
+    "packages": {
+      "whitelist": ["tn.airaware.api", "tn.airaware.core"],
+      "blacklist": ["tn.airaware.iam"]
+    }
+  }
+}

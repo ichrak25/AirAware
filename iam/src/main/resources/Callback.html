@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirAware - OAuth Callback</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .callback-container {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 700px;
+            width: 100%;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo h1 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .logo p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .status {
+            text-align: center;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .status.loading {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #d32f2f;
+        }
+
+        .icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .token-display {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            word-break: break-all;
+        }
+
+        .token-display h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .token-display pre {
+            background: #263238;
+            color: #80cbc4;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .token-info {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .info-card {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .info-card label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .info-card value {
+            display: block;
+            font-size: 16px;
+            color: #333;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .copy-btn {
+            background: #4caf50;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .copy-btn:hover {
+            background: #388e3c;
+        }
+    </style>
+</head>
+<body>
+<div class="callback-container">
+    <div class="logo">
+        <h1>🌍 AirAware</h1>
+        <p>OAuth 2.0 Authentication</p>
+    </div>
+
+    <div id="status" class="status loading">
+        <div class="icon">⏳</div>
+        <h2>Processing Authentication...</h2>
+        <p>Please wait while we complete your login.</p>
+    </div>
+
+    <div id="result" style="display: none;"></div>
+</div>
+
+<script>
+    // PKCE code verifier (must match what was used in authorization)
+    const CODE_VERIFIER = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
+    const TOKEN_ENDPOINT = '/iam-1.0-SNAPSHOT/api/oauth/token';
+
+    async function processCallback() {
+        const statusDiv = document.getElementById('status');
+        const resultDiv = document.getElementById('result');
+
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const error = urlParams.get('error');
+        const state = urlParams.get('state');
+
+        if (error) {
+            showError(error, urlParams.get('error_description'));
+            return;
+        }
+
+        if (!code) {
+            showError('No authorization code', 'No authorization code found in the URL.');
+            return;
+        }
+
+        try {
+            // Exchange code for token
+            const response = await fetch(TOKEN_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    grant_type: 'authorization_code',
+                    code: code,
+                    code_verifier: CODE_VERIFIER
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showSuccess(data);
+            } else {
+                showError(data.error || 'Token exchange failed', data.error_description || 'Failed to exchange code for token.');
+            }
+        } catch (err) {
+            showError('Network error', err.message);
+        }
+    }
+
+    function showSuccess(tokenData) {
+        const statusDiv = document.getElementById('status');
+        const resultDiv = document.getElementById('result');
+
+        // Decode JWT to show user info
+        const payload = parseJwt(tokenData.access_token);
+
+        statusDiv.className = 'status success';
+        statusDiv.innerHTML = `
+                <div class="icon">✅</div>
+                <h2>Authentication Successful!</h2>
+                <p>Welcome back, <strong>${payload.sub}</strong>!</p>
+            `;
+
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `
+                <div class="token-info">
+                    <div class="info-card">
+                        <label>User</label>
+                        <value>${payload.sub}</value>
+                    </div>
+                    <div class="info-card">
+                        <label>Tenant ID</label>
+                        <value>${payload.tenant_id}</value>
+                    </div>
+                    <div class="info-card">
+                        <label>Scopes</label>
+                        <value>${payload.scope}</value>
+                    </div>
+                    <div class="info-card">
+                        <label>Expires In</label>
+                        <value>${tokenData.expires_in} seconds</value>
+                    </div>
+                </div>
+
+                <div class="token-display">
+                    <h3>Access Token <button class="copy-btn" onclick="copyToClipboard('${tokenData.access_token}')">📋 Copy</button></h3>
+                    <pre>${tokenData.access_token}</pre>
+                </div>
+
+                <div class="token-display">
+                    <h3>Refresh Token <button class="copy-btn" onclick="copyToClipboard('${tokenData.refresh_token}')">📋 Copy</button></h3>
+                    <pre>${tokenData.refresh_token}</pre>
+                </div>
+
+                <div class="token-display">
+                    <h3>Decoded Payload</h3>
+                    <pre>${JSON.stringify(payload, null, 2)}</pre>
+                </div>
+
+                <div class="actions">
+                    <a href="/iam-1.0-SNAPSHOT/api/authorize?client_id=airaware-web-client&redirect_uri=${encodeURIComponent(window.location.origin + window.location.pathname)}&response_type=code&scope=sensor:read%20sensor:write%20alert:read&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256" class="btn btn-secondary">🔄 Login Again</a>
+                    <button class="btn" onclick="testApiCall('${tokenData.access_token}')">🧪 Test API Call</button>
+                </div>
+
+                <div id="api-result" style="margin-top: 20px;"></div>
+            `;
+
+        // Store tokens in sessionStorage for later use
+        sessionStorage.setItem('access_token', tokenData.access_token);
+        sessionStorage.setItem('refresh_token', tokenData.refresh_token);
+    }
+
+    function showError(error, description) {
+        const statusDiv = document.getElementById('status');
+        const resultDiv = document.getElementById('result');
+
+        statusDiv.className = 'status error';
+        statusDiv.innerHTML = `
+                <div class="icon">❌</div>
+                <h2>Authentication Failed</h2>
+                <p><strong>${error}</strong></p>
+                <p>${description || ''}</p>
+            `;
+
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `
+                <div class="actions">
+                    <a href="/iam-1.0-SNAPSHOT/api/authorize?client_id=airaware-web-client&redirect_uri=${encodeURIComponent(window.location.origin + window.location.pathname)}&response_type=code&scope=sensor:read&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256" class="btn">🔄 Try Again</a>
+                </div>
+            `;
+    }
+
+    function parseJwt(token) {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Copied to clipboard!');
+        });
+    }
+
+    async function testApiCall(token) {
+        const resultDiv = document.getElementById('api-result');
+        resultDiv.innerHTML = '<p>Testing API call...</p>';
+
+        try {
+            const response = await fetch('/api-1.0-SNAPSHOT/api/sensors', {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            });
+
+            const data = await response.json();
+            resultDiv.innerHTML = `
+                    <div class="token-display">
+                        <h3>API Response (${response.status})</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+        } catch (err) {
+            resultDiv.innerHTML = `
+                    <div class="status error">
+                        <p>API call failed: ${err.message}</p>
+                    </div>
+                `;
+        }
+    }
+
+    // Process callback on page load
+    processCallback();
+</script>
+</body>
+</html>

@@ -9,6 +9,8 @@ import jakarta.inject.Inject;
 import org.bson.Document;
 import tn.airaware.api.entities.Alert;
 import tn.airaware.api.entities.Reading;
+import tn.airaware.api.config.ApiDatabase; // Add this import
+
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -18,6 +20,7 @@ import java.util.List;
 public class AlertService {
 
     @Inject
+    @ApiDatabase
     private MongoDatabase database;
 
     private MongoCollection<Document> collection() {

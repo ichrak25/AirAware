@@ -32,7 +32,8 @@ public class JwtAuthenticationFilter implements ContainerRequestFilter {
             "/authorize",
             "/login",
             "/oauth/token",
-            "/activate"
+            "/activate",
+            "/callback"
     };
 
     @Override

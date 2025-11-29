@@ -15,10 +15,14 @@ import java.util.UUID;
 /**
  * Authorization Code with PKCE (Proof Key for Code Exchange)
  * Adapted for AirAware OAuth 2.0 flow
+ *
+ * FIXED: Uses pipe (|) as delimiter instead of colon (:) to avoid conflicts
+ * with scopes (sensor:read) and URLs (http://)
  */
 public class AuthorizationCode {
     private static final SecretKey key;
     private static final String codePrefix = "urn:airaware:code:";
+    private static final String DELIMITER = "|";  // Use pipe instead of colon
 
     static {
         try {
@@ -46,10 +50,10 @@ public class AuthorizationCode {
 
     public String getCode(String codeChallenge) throws Exception {
         String code = UUID.randomUUID().toString();
+        // Use pipe delimiter instead of colon
         String payload = Base64.getEncoder().withoutPadding().encodeToString(
-                (tenantName + ":" + identityUsername + ":" + approvedScopes + ":" + 
-                 expirationDate + ":" + redirectUri).getBytes(StandardCharsets.UTF_8));
-        String associatedData = codePrefix + code;
+                (tenantName + DELIMITER + identityUsername + DELIMITER + approvedScopes + DELIMITER +
+                        expirationDate + DELIMITER + redirectUri).getBytes(StandardCharsets.UTF_8));
         code = codePrefix + code + ":" + payload;
         return code + ":" + Base64.getEncoder().withoutPadding().encodeToString(
                 ChaCha20Poly1305.encrypt(codeChallenge.getBytes(), key));
@@ -59,26 +63,47 @@ public class AuthorizationCode {
         int pos = authorizationCode.lastIndexOf(':');
         String code = authorizationCode.substring(0, pos);
         String cipherCodeChallenge = authorizationCode.substring(pos + 1);
-        
+
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         digest.update(codeVerifier.getBytes(StandardCharsets.UTF_8));
-        String expected = Base64.getEncoder().withoutPadding().encodeToString(digest.digest());
-        
+        String expected = Base64.getUrlEncoder().withoutPadding().encodeToString(digest.digest());
+
         String decrypted = new String(
-                ChaCha20Poly1305.decrypt(Base64.getDecoder().decode(cipherCodeChallenge), key), 
-                StandardCharsets.UTF_8).replace('_', '/').replace('-', '+');
-        
-        if (!expected.equals(decrypted)) {
-            return null;
+                ChaCha20Poly1305.decrypt(Base64.getDecoder().decode(cipherCodeChallenge), key),
+                StandardCharsets.UTF_8);
+
+        // Convert standard Base64 to URL-safe Base64 for comparison
+        String decryptedUrlSafe = decrypted.replace('+', '-').replace('/', '_');
+        String expectedStandard = expected.replace('-', '+').replace('_', '/');
+
+        if (!expected.equals(decrypted) && !expectedStandard.equals(decrypted) &&
+                !expected.equals(decryptedUrlSafe) && !decrypted.equals(expected)) {
+            // Try one more comparison - the original might have mixed encodings
+            String decryptedNormalized = decrypted.replace('_', '/').replace('-', '+');
+            String expectedNormalized = expected.replace('_', '/').replace('-', '+');
+            if (!decryptedNormalized.equals(expectedNormalized)) {
+                return null;
+            }
         }
-        
+
         code = code.substring(codePrefix.length());
         pos = code.lastIndexOf(':');
         code = new String(Base64.getDecoder().decode(code.substring(pos + 1)), StandardCharsets.UTF_8);
-        String[] attributes = code.split(":");
-        
-        return new AuthorizationCode(attributes[0], attributes[1], attributes[2],
-                Long.parseLong(attributes[3]), attributes[4] + ":" + attributes[5]);
+
+        // Split on pipe delimiter instead of colon
+        String[] attributes = code.split("\\|");
+
+        if (attributes.length < 5) {
+            throw new IllegalArgumentException("Invalid authorization code format. Expected 5 parts, got " + attributes.length);
+        }
+
+        return new AuthorizationCode(
+                attributes[0],                    // tenantName
+                attributes[1],                    // identityUsername
+                attributes[2],                    // approvedScopes
+                Long.parseLong(attributes[3]),    // expirationDate
+                attributes[4]                     // redirectUri
+        );
     }
 
     public String tenantName() { return tenantName; }

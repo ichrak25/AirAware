@@ -19,6 +19,7 @@
     <maven.compiler.target>25</maven.compiler.target>
     <maven.compiler.source>25</maven.compiler.source>
     <junit.version>5.13.2</junit.version>
+      <jnosql.version>1.1.2</jnosql.version>
   </properties>
 
 <dependencies>
@@ -26,11 +27,13 @@
         <groupId>tn.airaware</groupId>
         <artifactId>core</artifactId>
         <version>1.0-SNAPSHOT</version>
+
     </dependency>
     <dependency>
         <groupId>tn.airaware</groupId>
         <artifactId>api</artifactId>
         <version>1.0-SNAPSHOT</version>
+        <classifier>classes</classifier>
     </dependency>
     <dependency>
       <groupId>jakarta.enterprise</groupId>
@@ -104,11 +107,7 @@
         <version>2.0.1</version>
         <scope>provided</scope>
     </dependency>
-    <dependency>
-        <groupId>tn.airaware</groupId>
-        <artifactId>api</artifactId>
-        <version>1.0-SNAPSHOT</version>
-    </dependency>
+
     <dependency>
         <groupId>jakarta.mail</groupId>
         <artifactId>jakarta.mail-api</artifactId>
@@ -125,26 +124,165 @@
         <artifactId>commons-lang3</artifactId>
         <version>3.20.0</version>
     </dependency>
+    <!-- ADD THIS TO IAM pom.xml -->
     <dependency>
-        <groupId>org.eclipse.jnosql.databases</groupId>
-        <artifactId>jnosql-mongodb</artifactId>
-        <version>1.1.10</version>
+        <groupId>org.mongodb</groupId>
+        <artifactId>mongodb-driver-sync</artifactId>
+        <version>5.7.0-alpha0</version>
     </dependency>
+
+
     <dependency>
         <groupId>io.smallrye.config</groupId>
         <artifactId>smallrye-config</artifactId>
         <version>3.1.0</version>
         <scope>test</scope>
     </dependency>
+
     <dependency>
-        <groupId>tn.airaware</groupId>
-        <artifactId>api</artifactId>
-        <version>1.0-SNAPSHOT</version>
-        <scope>compile</scope>
+        <groupId>jakarta.jms</groupId>
+        <artifactId>jakarta.jms-api</artifactId>
+        <version>3.1.0</version>
+        <scope>provided</scope>
+    </dependency><dependency>
+    <groupId>jakarta.mvc</groupId>
+    <artifactId>jakarta.mvc-api</artifactId>
+    <version>3.0.0</version>
+</dependency><dependency>
+    <groupId>jakarta.persistence</groupId>
+    <artifactId>jakarta.persistence-api</artifactId>
+    <version>3.2.0</version>
+    <scope>provided</scope>
+</dependency><dependency>
+    <groupId>jakarta.websocket</groupId>
+    <artifactId>jakarta.websocket-api</artifactId>
+    <version>2.2.0</version>
+    <scope>provided</scope>
+</dependency>
+    <dependency>
+        <groupId>jakarta.platform</groupId>
+        <artifactId>jakarta.jakartaee-api</artifactId>
+        <version>10.0.0</version>
+        <scope>provided</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.eclipse.paho</groupId>
+        <artifactId>org.eclipse.paho.client.mqttv3</artifactId>
+        <version>1.2.5</version>
+    </dependency>
+
+    <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>2.20.1</version>
+    </dependency>
+    <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <version>1.18.42</version>
+        <scope>provided</scope>
+    </dependency>
+    <dependency>
+        <groupId>io.jsonwebtoken</groupId>
+        <artifactId>jjwt-api</artifactId>
+        <version>0.13.0</version>
+    </dependency>
+    <dependency>
+        <groupId>io.jsonwebtoken</groupId>
+        <artifactId>jjwt-impl</artifactId>
+        <version>0.13.0</version>
+        <scope>runtime</scope>
+    </dependency>
+    <dependency>
+        <groupId>io.jsonwebtoken</groupId>
+        <artifactId>jjwt-jackson</artifactId>
+        <version>0.13.0</version>
+        <scope>runtime</scope>
     </dependency>
 
 
+    <dependency>
+        <groupId>de.mkammerer</groupId>
+        <artifactId>argon2-jvm</artifactId>
+        <version>2.12</version>
+    </dependency>
+    <dependency>
+        <groupId>jakarta.data</groupId>
+        <artifactId>jakarta.data-api</artifactId>
+        <version>1.0.0-RC1</version>
+    </dependency>
+
+
+    <dependency>
+        <groupId>org.eclipse.microprofile.config</groupId>
+        <artifactId>microprofile-config-api</artifactId>
+        <version>3.1</version> <!-- or latest stable version -->
+    </dependency>
+
+    <dependency>
+        <groupId>io.rest-assured</groupId>
+        <artifactId>rest-assured</artifactId>
+        <version>5.5.6</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>io.rest-assured</groupId>
+        <artifactId>json-path</artifactId>
+        <version>5.5.6</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>io.rest-assured</groupId>
+        <artifactId>json-schema-validator</artifactId>
+        <version>5.5.6</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>testcontainers</artifactId>
+        <version>2.0.1</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>junit-jupiter</artifactId>
+        <version>1.21.3</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>mongodb</artifactId>
+        <version>1.21.3</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.hamcrest</groupId>
+        <artifactId>hamcrest</artifactId>
+        <version>3.0</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.assertj</groupId>
+        <artifactId>assertj-core</artifactId>
+        <version>4.0.0-M1</version>
+        <scope>test</scope>
+    </dependency>
+    <!-- JUnit Platform Suite (for test suites) -->
+    <dependency>
+        <groupId>org.junit.platform</groupId>
+        <artifactId>junit-platform-suite-api</artifactId>
+        <version>6.0.1</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.junit.platform</groupId>
+        <artifactId>junit-platform-suite-engine</artifactId>
+        <version>6.0.1</version>
+        <scope>test</scope>
+    </dependency>
+
 </dependencies>
+
 
   <build>
     <plugins>

@@ -8,6 +8,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.bson.Document;
 import tn.airaware.api.entities.Tenant;
+import tn.airaware.api.config.ApiDatabase; // Add this import
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +20,7 @@ import java.util.List;
 public class TenantService {
 
     @Inject
+    @ApiDatabase
     private MongoDatabase database;
 
     private MongoCollection<Document> collection() {

@@ -1,31 +1,31 @@
 package tn.airaware.iam.repositories;
 
-import jakarta.data.repository.CrudRepository;
-import jakarta.data.repository.Repository;
 import tn.airaware.iam.entities.OAuthClient;
 
-import java.util.Optional;
 import java.util.List;
+import java.util.Optional;
 
 /**
- * Repository for OAuth Client management
- * Handles OAuth 2.0 client registration and lookup
+ * OAuth Client Repository Interface
+ * Direct MongoDB implementation - no JNoSQL to avoid DocumentTemplate conflicts
  */
-@Repository
-public interface OAuthClientRepository extends CrudRepository<OAuthClient, String> {
+public interface OAuthClientRepository {
 
-    /**
-     * Find OAuth client by client ID
-     */
     Optional<OAuthClient> findByClientId(String clientId);
 
-    /**
-     * Find OAuth client by organization name
-     */
     Optional<OAuthClient> findByOrganizationName(String organizationName);
 
-    /**
-     * Find active OAuth clients only
-     */
     List<OAuthClient> findByActive(boolean active);
+
+    OAuthClient save(OAuthClient client);
+
+    Optional<OAuthClient> findById(String id);
+
+    void delete(OAuthClient client);
+
+    void deleteById(String id);
+
+    boolean existsById(String id);
+
+    long count();
 }

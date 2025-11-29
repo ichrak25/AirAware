@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jboss-deployment-structure>
+    <deployment>
+        <!-- Prevent API from seeing IAM module classes -->
+        <exclusions>
+            <module name="deployment.iam-1.0-SNAPSHOT.war"/>
+        </exclusions>
+    </deployment>
+</jboss-deployment-structure>

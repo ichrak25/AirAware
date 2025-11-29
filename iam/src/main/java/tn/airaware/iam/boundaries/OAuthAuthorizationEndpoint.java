@@ -6,7 +6,6 @@ import jakarta.ws.rs.core.*;
 import tn.airaware.core.entities.Identity;
 import tn.airaware.iam.repositories.IdentityRepository;
 import tn.airaware.iam.repositories.OAuthClientRepository;
-import tn.airaware.api.repositories.TenantRepository;
 import tn.airaware.core.security.Argon2Utils;
 import tn.airaware.iam.security.AuthorizationCode;
 import tn.airaware.iam.entities.OAuthClient;
@@ -35,8 +34,8 @@ public class OAuthAuthorizationEndpoint {
     @Inject
     OAuthClientRepository oauthClientRepository;
 
-    @Inject
-    TenantRepository tenantRepository;
+    // REMOVED: TenantRepository - it was causing JNoSQL DocumentTemplate conflicts
+    // The OAuth client already contains organization info
 
     @Inject
     IdentityRepository identityRepository;
@@ -71,10 +70,12 @@ public class OAuthAuthorizationEndpoint {
             return informUserAboutError("Client does not support authorization_code grant type");
         }
 
-        // 3. Validate tenant organization exists (optional)
-        var tenant = tenantRepository.findByOrganizationName(clientId);
-        if (tenant == null) {
-            return informUserAboutError("Associated organization not found: " + clientId);
+        // 3. Organization validation - use OAuth client's organization name
+        // REMOVED: TenantRepository lookup - OAuth client already has organizationName
+        String organizationName = client.getOrganizationName();
+        if (organizationName == null || organizationName.isEmpty()) {
+            LOGGER.warning("OAuth client has no organization name: " + clientId);
+            // Continue anyway - organization is optional for basic auth flow
         }
 
         // 4. Validate redirect_uri
@@ -130,8 +131,9 @@ public class OAuthAuthorizationEndpoint {
                 .location(uriInfo.getBaseUri().resolve("/login/authorization"))
                 .cookie(new NewCookie.Builder(CHALLENGE_RESPONSE_COOKIE_ID)
                         .httpOnly(true)
-                        .secure(true)
-                        .sameSite(NewCookie.SameSite.STRICT)
+                        .secure(false)  // Set to true in production with HTTPS
+                        .sameSite(NewCookie.SameSite.LAX)  // Changed from STRICT for better compatibility
+                        .path("/")  // Make cookie available across paths
                         .value(cookieValue)
                         .build())
                 .build();
@@ -152,63 +154,60 @@ public class OAuthAuthorizationEndpoint {
         try {
             if (cookie == null) {
                 LOGGER.severe("Authorization cookie is missing");
-                throw new Exception("Authorization cookie is missing.");
+                return informUserAboutError("Authorization session expired. Please start the login process again.");
             }
 
-            // Find identity - properly handle Optional
+            LOGGER.info("Login attempt for user: " + username);
+
+            // Find identity
             Optional<Identity> identityOpt = identityRepository.findByUsername(username);
             if (identityOpt.isEmpty()) {
                 LOGGER.warning("Identity not found for username: " + username);
-                throw new Exception("Invalid credentials");
+                return informUserAboutError("Invalid username or password");
             }
 
-            // Extract Identity from Optional
             Identity identity = identityOpt.get();
 
             // Check if account is activated
             if (!identity.isAccountActivated()) {
-                String redirectUri = cookie.getValue().split("\\$")[1];
-                var location = UriBuilder.fromUri(redirectUri)
-                        .queryParam("error", "account_not_activated")
-                        .queryParam("error_description", "Please activate your account before logging in.")
-                        .build();
-
-                return Response.status(Response.Status.FORBIDDEN)
-                        .entity("Account not activated. Please verify your account.")
-                        .location(location)
-                        .build();
+                LOGGER.warning("Account not activated for user: " + username);
+                return informUserAboutError("Account not activated. Please check your email for the activation code.");
             }
 
             // Verify password
             if (argon2Utils.check(identity.getPassword(), password.toCharArray())) {
+                LOGGER.info("Password verified for user: " + username);
+
                 MultivaluedMap<String, String> params = uriInfo.getQueryParameters();
 
+                // Parse cookie value: clientId#scopes$redirectUri
+                String[] cookieParts = cookie.getValue().split("\\$");
+                String redirectUri = cookieParts.length > 1 ? cookieParts[1] : "http://localhost:3000/callback";
+
+                String[] firstParts = cookieParts[0].split("#");
+                String clientId = firstParts[0];
+                String scopes = firstParts.length > 1 ? firstParts[1] : "sensor:read";
+
                 String redirectURI = buildActualRedirectURI(
-                        cookie.getValue().split("\\$")[1],  // redirectUri
-                        params.getFirst("response_type"),
-                        cookie.getValue().split("#")[0],    // clientId
+                        redirectUri,
+                        params.getFirst("response_type") != null ? params.getFirst("response_type") : "code",
+                        clientId,
                         username,
-                        cookie.getValue().split("#")[1].split("\\$")[0],  // scopes
+                        scopes,
                         params.getFirst("code_challenge"),
                         params.getFirst("state")
                 );
 
+                LOGGER.info("Redirecting to: " + redirectURI);
                 return Response.seeOther(UriBuilder.fromUri(redirectURI).build()).build();
             } else {
-                // Invalid credentials
-                String redirectUri = cookie.getValue().split("\\$")[1];
-                var location = UriBuilder.fromUri(redirectUri)
-                        .queryParam("error", "access_denied")
-                        .queryParam("error_description", "Invalid credentials")
-                        .build();
-
-                return Response.seeOther(location).build();
+                LOGGER.warning("Invalid password for user: " + username);
+                return informUserAboutError("Invalid username or password");
             }
         } catch (Exception e) {
             LOGGER.severe("Error during login: " + e.getMessage());
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("An error occurred during login. Please try again.")
-                    .build();
+            e.printStackTrace();
+            return informUserAboutError("An error occurred during login. Please try again.");
         }
     }
 
@@ -233,17 +232,19 @@ public class OAuthAuthorizationEndpoint {
                     redirectUri
             );
 
+            // Use a default code challenge if none provided (for testing)
+            String challenge = codeChallenge != null ? codeChallenge : "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
+
             sb.append("?code=").append(URLEncoder.encode(
-                    authorizationCode.getCode(codeChallenge),
+                    authorizationCode.getCode(challenge),
                     StandardCharsets.UTF_8));
         } else {
-            // Implicit flow not supported
-            return null;
+            return redirectUri + "?error=unsupported_response_type";
         }
 
         // Add state parameter if provided
-        if (state != null) {
-            sb.append("&state=").append(state);
+        if (state != null && !state.isEmpty()) {
+            sb.append("&state=").append(URLEncoder.encode(state, StandardCharsets.UTF_8));
         }
 
         return sb.toString();
@@ -267,6 +268,8 @@ public class OAuthAuthorizationEndpoint {
                         "h1 { color: #d32f2f; font-size: 28px; margin-bottom: 20px; }" +
                         "p { color: #666; line-height: 1.8; font-size: 16px; }" +
                         ".icon { font-size: 64px; text-align: center; margin-bottom: 20px; }" +
+                        "a { color: #667eea; text-decoration: none; }" +
+                        "a:hover { text-decoration: underline; }" +
                         "</style>" +
                         "</head>" +
                         "<body>" +
@@ -274,7 +277,7 @@ public class OAuthAuthorizationEndpoint {
                         "<div class=\"icon\">⚠️</div>" +
                         "<h1>Authorization Error</h1>" +
                         "<p>%s</p>" +
-                        "<p><small>If you believe this is an error, please contact your system administrator.</small></p>" +
+                        "<p><a href=\"authorize?client_id=airaware-web-client&redirect_uri=http://localhost:3000/callback&response_type=code&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256\">Try Again</a></p>" +
                         "</div>" +
                         "</body>" +
                         "</html>", error);

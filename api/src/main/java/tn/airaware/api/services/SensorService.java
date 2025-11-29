@@ -10,6 +10,7 @@ import org.bson.Document;
 import tn.airaware.api.entities.Coordinates;
 import tn.airaware.api.entities.Sensor;
 import tn.airaware.api.entities.Tenant;
+import tn.airaware.api.config.ApiDatabase; // Add this import
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ import java.util.List;
 public class SensorService {
 
     @Inject
+    @ApiDatabase
     private MongoDatabase database;
 
     private MongoCollection<Document> collection() {
