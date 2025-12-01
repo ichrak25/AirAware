@@ -1,0 +1,254 @@
+# AirAware MLOps Configuration
+
+# Database Configuration
+database:
+  mongodb:
+    uri: "mongodb://localhost:27017"
+    database: "AirAwareDB"
+    collections:
+      readings: "readings"
+      alerts: "alerts"
+      sensors: "sensors"
+
+# Data Pipeline
+data:
+  # Feature engineering
+  features:
+    - "temperature"
+    - "humidity"
+    - "co2"
+    - "voc"
+    - "pm25"
+    - "pm10"
+    - "hour_of_day"
+    - "day_of_week"
+    - "is_weekend"
+    - "rolling_mean_co2_1h"
+    - "rolling_std_pm25_1h"
+    - "rate_of_change_co2"
+
+  # Time windows for aggregations
+  time_windows:
+    - "1h"
+    - "6h"
+    - "24h"
+
+  # Data validation thresholds
+  validation:
+    temperature:
+      min: -50
+      max: 70
+    humidity:
+      min: 0
+      max: 100
+    co2:
+      min: 0
+      max: 10000
+    pm25:
+      min: 0
+      max: 1000
+
+  # Training data split
+  train_test_split: 0.8
+  validation_split: 0.1
+
+# Model Configuration
+models:
+  anomaly_detector:
+    algorithm: "IsolationForest"
+    params:
+      n_estimators: 100
+      contamination: 0.05
+      max_samples: "auto"
+      random_state: 42
+
+  aqi_predictor:
+    algorithm: "XGBoost"
+    params:
+      max_depth: 6
+      learning_rate: 0.1
+      n_estimators: 200
+      objective: "reg:squarederror"
+      subsample: 0.8
+      colsample_bytree: 0.8
+      random_state: 42
+
+  time_series_forecaster:
+    algorithm: "LSTM"
+    params:
+      units: [128, 64, 32]
+      dropout: 0.2
+      epochs: 50
+      batch_size: 32
+      learning_rate: 0.001
+      sequence_length: 24  # 24 hours of history
+
+  ensemble:
+    weights:
+      anomaly: 0.3
+      aqi: 0.4
+      forecast: 0.3
+
+# Air Quality Index (AQI) Calculation
+aqi:
+  # EPA AQI breakpoints for PM2.5
+  pm25_breakpoints:
+    - [0.0, 12.0, 0, 50]      # Good
+    - [12.1, 35.4, 51, 100]   # Moderate
+    - [35.5, 55.4, 101, 150]  # Unhealthy for Sensitive Groups
+    - [55.5, 150.4, 151, 200] # Unhealthy
+    - [150.5, 250.4, 201, 300] # Very Unhealthy
+    - [250.5, 500.4, 301, 500] # Hazardous
+
+  # CO2 thresholds (ppm)
+  co2_thresholds:
+    good: 400
+    moderate: 1000
+    unhealthy: 2000
+    hazardous: 5000
+
+# Training Configuration
+training:
+  # Automated retraining schedule
+  schedule: "0 2 * * *"  # Daily at 2 AM
+
+  # Minimum data required for retraining
+  min_samples: 1000
+
+  # Retraining triggers
+  triggers:
+    drift_threshold: 0.1
+    accuracy_drop: 0.05
+    days_since_training: 7
+
+  # Hyperparameter tuning
+  tuning:
+    enabled: true
+    n_trials: 50
+    timeout: 3600  # 1 hour
+
+  # Model versioning
+  versioning:
+    enabled: true
+    registry: "mlflow"
+
+# Model Serving
+serving:
+  api:
+    host: "0.0.0.0"
+    port: 8000
+    workers: 4
+    timeout: 30
+
+  # Inference configuration
+  inference:
+    batch_size: 32
+    max_latency_ms: 50
+
+  # Caching
+  cache:
+    enabled: true
+    ttl: 300  # 5 minutes
+
+# Monitoring Configuration
+monitoring:
+  # Performance metrics
+  metrics:
+    - "accuracy"
+    - "precision"
+    - "recall"
+    - "f1_score"
+    - "mae"
+    - "rmse"
+    - "latency"
+
+  # Drift detection
+  drift:
+    enabled: true
+    method: "KS-test"
+    threshold: 0.05
+    window_size: 1000
+
+  # Alerting thresholds
+  alerts:
+    accuracy_drop: 0.9
+    latency_spike: 100  # ms
+    error_rate: 0.05
+
+  # Prometheus metrics
+  prometheus:
+    enabled: true
+    port: 9090
+
+# Alert Configuration
+alerts:
+  # Anomaly detection thresholds
+  anomaly:
+    score_threshold: 0.7
+    consecutive_anomalies: 3
+
+  # AQI alert levels
+  aqi_thresholds:
+    warning: 100
+    danger: 150
+    emergency: 200
+
+  # Notification channels
+  channels:
+    email: true
+    sms: false
+    webhook: true
+
+  # Webhook configuration
+  webhook:
+    url: "http://localhost:8080/api-1.0-SNAPSHOT/api/alerts"
+    method: "POST"
+    headers:
+      Content-Type: "application/json"
+
+# MLflow Configuration
+mlflow:
+  tracking_uri: "http://localhost:5000"
+  experiment_name: "airaware_ml"
+  artifact_location: "./mlruns"
+  registry_uri: "sqlite:///mlflow.db"
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/mlops.log"
+  max_bytes: 10485760  # 10MB
+  backup_count: 5
+
+# Security & Compliance
+security:
+  # Data encryption
+  encryption:
+    enabled: true
+    algorithm: "AES-256"
+
+  # Access control
+  api_key_required: true
+
+  # Data retention
+  retention:
+    raw_data_days: 365
+    predictions_days: 180
+    models_count: 10
+
+# Resource Management
+resources:
+  # CPU/Memory limits
+  training:
+    cpu_limit: 4
+    memory_limit: "8Gi"
+
+  inference:
+    cpu_limit: 2
+    memory_limit: "4Gi"
+
+  # GPU configuration (if available)
+  gpu:
+    enabled: false
+    device: 0
