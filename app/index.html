@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#558B56">
+    <meta name="description" content="AirAware - Surveillance intelligente de la qualité de l'air">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AirAware">
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%23558B56' width='192' height='192' rx='45'/><text x='50%' y='50%' font-size='100' font-weight='bold' text-anchor='middle' dy='.3em' fill='white'>AQ</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%23558B56' width='192' height='192' rx='45'/><text x='50%' y='50%' font-size='100' font-weight='bold' text-anchor='middle' dy='.3em' fill='white'>AQ</text></svg>">
+    
+    <link rel="stylesheet" href="styles.css">
+    <title>AirAware - Surveillance de la qualité d'air</title>
+</head>
+<body>
+    <div id="app" class="app-container">
+        <!-- Auth Screen -->
+        <div id="auth-screen" class="screen active">
+            <div class="auth-container">
+                <div class="auth-header">
+                    <h1 class="app-title">AirAware</h1>
+                    <p class="app-subtitle">Qualité d'air intelligente</p>
+                </div>
+                
+                <form id="auth-form" class="auth-form">
+                    <div class="form-group">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" id="email" class="form-input" placeholder="votre@email.com" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password" class="form-label">Mot de passe</label>
+                        <input type="password" id="password" class="form-input" placeholder="••••••••" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-checkbox">
+                            <input type="checkbox" id="remember-me">
+                            <span>Se souvenir de moi</span>
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-lg">Connexion</button>
+                </form>
+                
+                <p class="auth-footer">Pas encore de compte ? <a href="#" onclick="toggleAuthMode()">S'inscrire</a></p>
+            </div>
+        </div>
+
+        <!-- Main App -->
+        <div id="main-app" class="screen">
+            <!-- Sidebar Navigation -->
+            <nav class="sidebar">
+                <div class="sidebar-header">
+                    <h2 class="sidebar-title">AirAware</h2>
+                    <button class="btn-sidebar-close" onclick="toggleSidebar()">×</button>
+                </div>
+                
+                <ul class="nav-menu">
+                    <li><a href="#dashboard" class="nav-link active" onclick="navigateTo('dashboard')">📊 Tableau de bord</a></li>
+                    <li><a href="#history" class="nav-link" onclick="navigateTo('history')">📈 Historique</a></li>
+                    <li><a href="#predictions" class="nav-link" onclick="navigateTo('predictions')">🤖 Prédictions IA</a></li>
+                    <li><a href="#health" class="nav-link" onclick="navigateTo('health')">❤️ Santé</a></li>
+                    <li><a href="#profile" class="nav-link" onclick="navigateTo('profile')">👤 Profil</a></li>
+                </ul>
+                
+                <div class="sidebar-footer">
+                    <button class="btn btn-outline" onclick="logout()">Déconnexion</button>
+                </div>
+            </nav>
+
+            <!-- Header -->
+            <header class="app-header">
+                <button class="btn-menu" onclick="toggleSidebar()">☰</button>
+                <h1 id="page-title" class="header-title">Tableau de bord</h1>
+                <div class="header-user" id="header-user">
+                    <span id="user-email" class="user-email"></span>
+                </div>
+            </header>
+
+            <!-- Pages -->
+            <main class="main-content">
+                <!-- Dashboard Page -->
+                <div id="dashboard-page" class="page active">
+                    <div class="page-header">
+                        <h2>Tableau de bord</h2>
+                        <p class="text-muted">Surveillance en temps réel</p>
+                    </div>
+
+                    <!-- AQI Card -->
+                    <div class="aqi-card">
+                        <div class="aqi-header">
+                            <h3>Indice de Qualité d'Air</h3>
+                            <span class="aqi-badge" id="aqi-status">BON</span>
+                        </div>
+                        <div class="aqi-display">
+                            <div class="aqi-number" id="aqi-value">42</div>
+                            <div class="aqi-description" id="aqi-description">Qualité d'air excellente</div>
+                        </div>
+                        <div class="aqi-bar">
+                            <div class="aqi-fill" id="aqi-fill" style="width: 30%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Metrics Grid -->
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-label">CO₂</div>
+                            <div class="metric-value" id="metric-co2">412 ppm</div>
+                            <div class="metric-status" id="metric-co2-status">Normal</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">PM2.5</div>
+                            <div class="metric-value" id="metric-pm25">8.5 µg/m³</div>
+                            <div class="metric-status" id="metric-pm25-status">Bon</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">PM10</div>
+                            <div class="metric-value" id="metric-pm10">15.2 µg/m³</div>
+                            <div class="metric-status" id="metric-pm10-status">Bon</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Température</div>
+                            <div class="metric-value" id="metric-temp">22.3 °C</div>
+                            <div class="metric-status" id="metric-temp-status">Confortable</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Humidité</div>
+                            <div class="metric-value" id="metric-humidity">55%</div>
+                            <div class="metric-status" id="metric-humidity-status">Idéal</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Pression</div>
+                            <div class="metric-value" id="metric-pressure">1013 hPa</div>
+                            <div class="metric-status" id="metric-pressure-status">Stable</div>
+                        </div>
+                    </div>
+
+                    <!-- Chart -->
+                    <div class="chart-card">
+                        <h3>Tendance 24h</h3>
+                        <canvas id="trend-chart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+
+                <!-- History Page -->
+                <div id="history-page" class="page">
+                    <div class="page-header">
+                        <h2>Historique des données</h2>
+                        <p class="text-muted">Analyse détaillée des tendances</p>
+                    </div>
+
+                    <div class="filter-group">
+                        <select id="period-select" class="form-input" onchange="updateHistoryChart()">
+                            <option value="1h">Dernière heure</option>
+                            <option value="24h" selected>Dernières 24h</option>
+                            <option value="7d">Derniers 7 jours</option>
+                            <option value="30d">Dernier mois</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="exportData('csv')">📥 CSV</button>
+                        <button class="btn btn-primary" onclick="exportData('pdf')">📄 PDF</button>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3>CO₂ - Historique</h3>
+                        <canvas id="history-chart" width="400" height="200"></canvas>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <label>CO₂ Moyen</label>
+                            <div class="stat-value" id="stat-avg-co2">425 ppm</div>
+                        </div>
+                        <div class="stat-box">
+                            <label>Max</label>
+                            <div class="stat-value" id="stat-max-co2">580 ppm</div>
+                        </div>
+                        <div class="stat-box">
+                            <label>Min</label>
+                            <div class="stat-value" id="stat-min-co2">380 ppm</div>
+                        </div>
+                        <div class="stat-box">
+                            <label>Écart-type</label>
+                            <div class="stat-value" id="stat-std-co2">45 ppm</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Predictions Page -->
+                <div id="predictions-page" class="page">
+                    <div class="page-header">
+                        <h2>Prédictions IA</h2>
+                        <p class="text-muted">Modèle LSTM 48h ahead</p>
+                    </div>
+
+                    <div class="predictions-container">
+                        <div class="prediction-card">
+                            <h3>CO₂ (24h)</h3>
+                            <div class="prediction-value">450 ppm</div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: 85%"></div>
+                            </div>
+                            <p class="confidence-text">Confiance: 85%</p>
+                        </div>
+
+                        <div class="prediction-card">
+                            <h3>PM2.5 (24h)</h3>
+                            <div class="prediction-value">12 µg/m³</div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: 78%"></div>
+                            </div>
+                            <p class="confidence-text">Confiance: 78%</p>
+                        </div>
+
+                        <div class="prediction-card">
+                            <h3>Température (24h)</h3>
+                            <div class="prediction-value">23.5 °C</div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: 92%"></div>
+                            </div>
+                            <p class="confidence-text">Confiance: 92%</p>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3>Prédiction CO₂ - 48h</h3>
+                        <canvas id="prediction-chart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+
+                <!-- Health Page -->
+                <div id="health-page" class="page">
+                    <div class="page-header">
+                        <h2>Conseils Santé</h2>
+                        <p class="text-muted">Recommandations personnalisées</p>
+                    </div>
+
+                    <div class="health-tips">
+                        <div class="tip-card alert-good">
+                            <h3>✓ Qualité excellente</h3>
+                            <p>Les niveaux d'air sont parfaits. C'est un bon moment pour aérer ou faire du sport.</p>
+                        </div>
+
+                        <div class="tip-card">
+                            <h3>💡 Conseils généraux</h3>
+                            <ul class="tips-list">
+                                <li>Maintenez une humidité entre 40-60%</li>
+                                <li>Aérez 10 minutes par heure</li>
+                                <li>Utilisez des plantes filtrantes</li>
+                                <li>Nettoyez les filtres régulièrement</li>
+                            </ul>
+                        </div>
+
+                        <div class="tip-card">
+                            <h3>⚠️ Pour les personnes sensibles</h3>
+                            <ul class="tips-list">
+                                <li>Évitez les activités intensives si CO₂ > 800 ppm</li>
+                                <li>Portez un masque si PM2.5 > 35 µg/m³</li>
+                                <li>Consultez un médecin si symptômes</li>
+                                <li>Prenez des suppléments si nécessaire</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profile Page -->
+                <div id="profile-page" class="page">
+                    <div class="page-header">
+                        <h2>Mon Profil</h2>
+                        <p class="text-muted">Gérez vos paramètres</p>
+                    </div>
+
+                    <div class="profile-form">
+                        <div class="form-section">
+                            <h3>Informations personnelles</h3>
+                            <div class="form-group">
+                                <label class="form-label">Email</label>
+                                <input type="email" id="profile-email" class="form-input" readonly>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Habitat</label>
+                                <select id="habitat-select" class="form-input">
+                                    <option>Maison</option>
+                                    <option>Appartement</option>
+                                    <option>Bureau</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Localisation du capteur</label>
+                                <input type="text" id="location-input" class="form-input" placeholder="Salon, Bureau, etc.">
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h3>Capteurs connectés</h3>
+                            <div class="sensors-list">
+                                <div class="sensor-item">
+                                    <span>🌡️ Capteur Principal</span>
+                                    <span class="status-badge status-online">En ligne</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h3>Préférences</h3>
+                            <label class="form-checkbox">
+                                <input type="checkbox" checked>
+                                <span>Notifications activées</span>
+                            </label>
+                            <label class="form-checkbox">
+                                <input type="checkbox" checked>
+                                <span>Mode sombre</span>
+                            </label>
+                            <label class="form-checkbox">
+                                <input type="checkbox">
+                                <span>Partager les données anonymisées</span>
+                            </label>
+                        </div>
+
+                        <button class="btn btn-primary btn-lg" onclick="saveProfile()">Enregistrer les modifications</button>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- PWA Install Prompt -->
+        <div id="pwa-prompt" class="pwa-prompt hidden">
+            <div class="pwa-content">
+                <h3>Installer AirAware</h3>
+                <p>Accédez à l'app directement depuis votre écran d'accueil</p>
+                <div class="pwa-buttons">
+                    <button class="btn btn-primary" onclick="installPWA()">Installer</button>
+                    <button class="btn btn-outline" onclick="dismissPWA()">Plus tard</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
