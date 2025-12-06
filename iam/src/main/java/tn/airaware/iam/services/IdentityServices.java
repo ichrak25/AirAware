@@ -14,11 +14,14 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Logger;
 
 /**
  * Identity Services for AirAware
  * Handles user registration, activation, and management
+ *
+ * UPDATED: Added resendActivationCode() method for PWA integration
  */
 @ApplicationScoped
 public class IdentityServices {
@@ -35,11 +38,15 @@ public class IdentityServices {
     private EmailService emailService;
 
     private static final int ACTIVATION_CODE_LENGTH = 6;
-    private static final int ACTIVATION_CODE_EXPIRATION_MINUTES = 5;
+    private static final int ACTIVATION_CODE_EXPIRATION_MINUTES = 15; // Increased from 5 to 15 minutes
     private static final int MIN_PASSWORD_LENGTH = 8;
 
     // Store activation codes temporarily (in production, use Redis or database)
+    // Key: activation code, Value: Pair<email, expiration time>
     private final Map<String, Pair<String, LocalDateTime>> activationCodes = new HashMap<>();
+
+    // Reverse lookup: email -> activation code (for resending)
+    private final Map<String, String> emailToCode = new HashMap<>();
 
     /**
      * Register a new identity/user for AirAware
@@ -53,12 +60,54 @@ public class IdentityServices {
         identityRepository.save(identity);
 
         // Generate and send activation code
+        sendActivationCode(email);
+    }
+
+    /**
+     * Send or resend activation code to email
+     */
+    public void sendActivationCode(String email) {
+        // Remove old code if exists
+        String oldCode = emailToCode.get(email);
+        if (oldCode != null) {
+            activationCodes.remove(oldCode);
+        }
+
+        // Generate new activation code
         String activationCode = generateActivationCode();
         LocalDateTime expirationTime = LocalDateTime.now().plusMinutes(ACTIVATION_CODE_EXPIRATION_MINUTES);
-        activationCodes.put(activationCode, Pair.of(identity.getEmail(), expirationTime));
 
-        emailService.sendActivationEmail(identity.getEmail(), activationCode);
-        LOGGER.info("Activation email sent to: " + identity.getEmail());
+        // Store the code
+        activationCodes.put(activationCode, Pair.of(email, expirationTime));
+        emailToCode.put(email, activationCode);
+
+        // Send email
+        emailService.sendActivationEmail(email, activationCode);
+        LOGGER.info("Activation email sent to: " + email + " (code expires in " + ACTIVATION_CODE_EXPIRATION_MINUTES + " minutes)");
+    }
+
+    /**
+     * Resend activation code to user
+     * @param email The email address to send the code to
+     * @return true if code was sent successfully
+     */
+    public boolean resendActivationCode(String email) {
+        // Find identity by email
+        Optional<Identity> identityOpt = identityRepository.findByEmail(email);
+        if (identityOpt.isEmpty()) {
+            throw new EJBException("No account found with email: " + email);
+        }
+
+        Identity identity = identityOpt.get();
+
+        // Check if already activated
+        if (identity.isAccountActivated()) {
+            throw new EJBException("Account is already activated. Please sign in.");
+        }
+
+        // Send new activation code
+        sendActivationCode(email);
+        return true;
     }
 
     /**
@@ -75,9 +124,10 @@ public class IdentityServices {
         LocalDateTime expirationTime = codeDetails.getRight();
 
         if (LocalDateTime.now().isAfter(expirationTime)) {
+            // Clean up expired code
             activationCodes.remove(code);
-            deleteIdentityByEmail(email);
-            throw new EJBException("Activation code expired. Please register again.");
+            emailToCode.remove(email);
+            throw new EJBException("Activation code expired. Please request a new code.");
         }
 
         Identity identity = identityRepository.findByEmail(email)
@@ -85,9 +135,26 @@ public class IdentityServices {
 
         identity.setAccountActivated(true);
         identityRepository.save(identity);
+
+        // Clean up used code
         activationCodes.remove(code);
+        emailToCode.remove(email);
 
         LOGGER.info("Identity activated: " + email);
+    }
+
+    /**
+     * Get identity by email (useful for auto-login after activation)
+     */
+    public Optional<Identity> getIdentityByEmail(String email) {
+        return identityRepository.findByEmail(email);
+    }
+
+    /**
+     * Get identity by username
+     */
+    public Optional<Identity> getIdentityByUsername(String username) {
+        return identityRepository.findByUsername(username);
     }
 
     /**
@@ -168,17 +235,20 @@ public class IdentityServices {
     // ==================== Private Helper Methods ====================
 
     private void validateIdentity(String username, String email) {
+        if (username == null || username.trim().isEmpty()) {
+            throw new EJBException("Username is required.");
+        }
+        if (email == null || email.trim().isEmpty()) {
+            throw new EJBException("Email is required.");
+        }
+        if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+            throw new EJBException("Invalid email format.");
+        }
         if (identityRepository.findByUsername(username).isPresent()) {
             throw new EJBException("Username '" + username + "' already exists.");
         }
         if (identityRepository.findByEmail(email).isPresent()) {
             throw new EJBException("Email '" + email + "' already exists.");
-        }
-        if (username == null || username.isEmpty()) {
-            throw new EJBException("Username is required.");
-        }
-        if (email == null || email.isEmpty()) {
-            throw new EJBException("Email is required.");
         }
     }
 
@@ -186,7 +256,7 @@ public class IdentityServices {
         Identity identity = new Identity();
         identity.setUsername(username);
         identity.setEmail(email);
-        identity.setCreationDate(Instant.now()); // Now using Instant directly
+        identity.setCreationDate(Instant.now());
         identity.setRoles(Role.VIEWER.getValue()); // Default role for new users
         identity.setScopes("sensor:read alert:read dashboard:view");
         identity.hashPassword(password, argon2Utils);
@@ -217,11 +287,12 @@ public class IdentityServices {
         if (password.length() < MIN_PASSWORD_LENGTH) {
             throw new EJBException("Password must be at least " + MIN_PASSWORD_LENGTH + " characters long.");
         }
-        if (!password.matches(".*\\d.*")) {
-            throw new EJBException("Password must contain at least one number.");
-        }
-        if (!password.matches(".*[!@#$%^&*(),.?\":{}|<>].*")) {
-            throw new EJBException("Password must contain at least one special character.");
-        }
+        // Optional: Add more password requirements
+        // if (!password.matches(".*\\d.*")) {
+        //     throw new EJBException("Password must contain at least one number.");
+        // }
+        // if (!password.matches(".*[!@#$%^&*(),.?\":{}|<>].*")) {
+        //     throw new EJBException("Password must contain at least one special character.");
+        // }
     }
 }

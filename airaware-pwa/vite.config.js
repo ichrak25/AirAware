@@ -196,14 +196,18 @@ export default defineConfig({
     port: 5173,
     host: true, // Allow access from network (for mobile testing)
     proxy: {
+      // API module proxy: /api/* -> http://localhost:8080/api-1.0-SNAPSHOT/api/*
       '/api': {
         target: 'http://localhost:8080/api-1.0-SNAPSHOT',
         changeOrigin: true
       },
-      '/iam': {
+      // IAM module proxy: /iam/api/* -> http://localhost:8080/iam-1.0-SNAPSHOT/api/*
+      '/iam/api': {
         target: 'http://localhost:8080/iam-1.0-SNAPSHOT',
-        changeOrigin: true
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/iam\/api/, '/api')
       },
+      // MLOps module proxy: /ml/* -> http://localhost:8000/*
       '/ml': {
         target: 'http://localhost:8000',
         changeOrigin: true,

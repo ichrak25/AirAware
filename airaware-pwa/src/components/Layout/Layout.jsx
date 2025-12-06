@@ -16,9 +16,11 @@ import {
   Wifi,
   WifiOff,
   Download,
+  ChevronDown,
 } from 'lucide-react';
 import { useApp, useTheme, useAlerts } from '../../context/AppContext';
 import { AlertBadge } from '../Alerts/AlertList';
+import { useAuth } from '../../App';
 
 // Navigation items
 const NAV_ITEMS = [
@@ -29,6 +31,92 @@ const NAV_ITEMS = [
   { path: '/analytics', icon: Activity, label: 'Analytics' },
   { path: '/settings', icon: Settings, label: 'Settings' },
 ];
+
+/**
+ * User Menu Dropdown
+ */
+function UserMenu() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [isOpen, setIsOpen] = React.useState(false);
+  const menuRef = React.useRef(null);
+
+  // Close menu when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+      >
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-air-500 to-teal-500 flex items-center justify-center">
+          <span className="text-white text-sm font-bold">
+            {user?.name?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || 'U'}
+          </span>
+        </div>
+        <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden z-50"
+          >
+            {/* User Info */}
+            <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+              <p className="text-sm font-medium text-slate-900 dark:text-white">
+                {user?.name || user?.username || 'User'}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                {user?.email || 'No email'}
+              </p>
+            </div>
+
+            {/* Menu Items */}
+            <div className="py-1">
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  navigate('/settings');
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Settings
+              </button>
+              
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 /**
  * Navbar Component
@@ -153,12 +241,7 @@ export function Navbar() {
             </button>
             
             {/* User Menu */}
-            <button
-              onClick={() => navigate('/settings')}
-              className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <User className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-            </button>
+            <UserMenu />
           </div>
         </div>
       </div>
@@ -254,19 +337,53 @@ export function Sidebar() {
           })}
         </nav>
         
-        {/* Footer */}
+        {/* Footer with User Info */}
         <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-          <div className="glass-card p-4 bg-gradient-to-br from-air-50 to-teal-50 dark:from-air-900/20 dark:to-teal-900/20">
-            <p className="text-sm font-medium text-air-700 dark:text-air-400">
-              Air Quality Status
-            </p>
-            <p className="text-xs text-air-600 dark:text-air-500 mt-1">
-              5 sensors active • Last update: Just now
-            </p>
-          </div>
+          <UserInfoCard />
         </div>
       </motion.aside>
     </>
+  );
+}
+
+/**
+ * User Info Card for Sidebar
+ */
+function UserInfoCard() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  return (
+    <div className="glass-card p-4 bg-gradient-to-br from-air-50 to-teal-50 dark:from-air-900/20 dark:to-teal-900/20">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-air-500 to-teal-500 flex items-center justify-center">
+          <span className="text-white font-bold">
+            {user?.name?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || 'U'}
+          </span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
+            {user?.name || user?.username || 'User'}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+            {user?.email || 'Authenticated'}
+          </p>
+        </div>
+      </div>
+      
+      <button
+        onClick={handleLogout}
+        className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+      >
+        <LogOut className="w-4 h-4" />
+        Sign Out
+      </button>
+    </div>
   );
 }
 

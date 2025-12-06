@@ -11,11 +11,14 @@ import tn.airaware.iam.security.JwtManager;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 
 /**
  * JWT Authentication Filter for AirAware
  * Validates JWT tokens on protected endpoints
+ *
+ * UPDATED: Added /oauth/login and other PWA endpoints to public paths
  */
 @Provider
 @Priority(Priorities.AUTHENTICATION)
@@ -27,21 +30,41 @@ public class JwtAuthenticationFilter implements ContainerRequestFilter {
     private JwtManager jwtManager;
 
     // Public endpoints that don't require authentication
-    private static final String[] PUBLIC_PATHS = {
-            "/register",
-            "/authorize",
-            "/login",
-            "/oauth/token",
-            "/activate",
-            "/callback"
-    };
+    private static final Set<String> PUBLIC_PATHS = Set.of(
+            // PWA Authentication endpoints
+            "oauth/login",
+            "oauth/token",
+            "oauth/authorize",
+
+            // Registration endpoints
+            "register",
+            "register/activate",
+            "register/resend",
+
+            // Legacy endpoints
+            "login",
+            "authorize",
+            "activate",
+            "callback",
+
+            // OpenID/OAuth discovery
+            ".well-known",
+            "jwks"
+    );
 
     @Override
     public void filter(ContainerRequestContext requestContext) throws IOException {
         String path = requestContext.getUriInfo().getPath();
+        String method = requestContext.getMethod();
+
+        // Allow OPTIONS requests (CORS preflight)
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            return;
+        }
 
         // Skip authentication for public endpoints
         if (isPublicPath(path)) {
+            LOGGER.fine("Skipping auth for public path: " + path);
             return;
         }
 
@@ -82,8 +105,12 @@ public class JwtAuthenticationFilter implements ContainerRequestFilter {
     }
 
     private boolean isPublicPath(String path) {
+        // Remove leading slash if present
+        String normalizedPath = path.startsWith("/") ? path.substring(1) : path;
+
+        // Check if path starts with any public path
         for (String publicPath : PUBLIC_PATHS) {
-            if (path.startsWith(publicPath)) {
+            if (normalizedPath.startsWith(publicPath)) {
                 return true;
             }
         }
@@ -93,6 +120,7 @@ public class JwtAuthenticationFilter implements ContainerRequestFilter {
     private void abortWithUnauthorized(ContainerRequestContext requestContext, String message) {
         requestContext.abortWith(
                 Response.status(Response.Status.UNAUTHORIZED)
+                        .header("Content-Type", "application/json")
                         .entity("{\"error\": \"" + message + "\"}")
                         .build()
         );
