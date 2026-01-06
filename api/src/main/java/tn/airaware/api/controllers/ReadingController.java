@@ -73,19 +73,35 @@ public class ReadingController {
     }
 
     /**
-     * Get all readings
+     * Get all readings with optional limit parameter
      * GET /api/readings
+     * GET /api/readings?limit=50
+     *
+     * FIXED: Added support for limit query parameter
      */
     @GET
-    public Response getAllReadings() {
+    public Response getAllReadings(@QueryParam("limit") @DefaultValue("0") int limit) {
         try {
             List<Reading> readings = readingService.getAllReadings();
-            LOGGER.info("Retrieved " + readings.size() + " readings");
+            LOGGER.info("Retrieved " + readings.size() + " total readings from database");
+
+            // Sort by timestamp descending (newest first)
+            readings.sort(Comparator.comparing(
+                    Reading::getTimestamp,
+                    Comparator.nullsLast(Comparator.reverseOrder())
+            ));
+
+            // Apply limit if specified
+            if (limit > 0 && readings.size() > limit) {
+                readings = readings.subList(0, limit);
+                LOGGER.info("Limited to " + limit + " readings");
+            }
 
             return Response.ok(readings).build();
 
         } catch (Exception e) {
             LOGGER.severe("Error retrieving readings: " + e.getMessage());
+            e.printStackTrace(); // Log full stack trace
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to retrieve readings: " + e.getMessage()))
                     .build();
@@ -127,10 +143,13 @@ public class ReadingController {
     /**
      * Get all readings for a specific sensor
      * GET /api/readings/sensor/{sensorId}
+     * GET /api/readings/sensor/{sensorId}?limit=50
      */
     @GET
     @Path("/sensor/{sensorId}")
-    public Response getReadingsBySensor(@PathParam("sensorId") String sensorId) {
+    public Response getReadingsBySensor(
+            @PathParam("sensorId") String sensorId,
+            @QueryParam("limit") @DefaultValue("0") int limit) {
         try {
             if (sensorId == null || sensorId.isEmpty()) {
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -139,6 +158,18 @@ public class ReadingController {
             }
 
             List<Reading> readings = readingService.getReadingsBySensor(sensorId);
+
+            // Sort by timestamp descending (newest first)
+            readings.sort(Comparator.comparing(
+                    Reading::getTimestamp,
+                    Comparator.nullsLast(Comparator.reverseOrder())
+            ));
+
+            // Apply limit if specified
+            if (limit > 0 && readings.size() > limit) {
+                readings = readings.subList(0, limit);
+            }
+
             LOGGER.info("Retrieved " + readings.size() + " readings for sensor: " + sensorId);
 
             return Response.ok(readings).build();
@@ -175,8 +206,9 @@ public class ReadingController {
 
             // Get the most recent reading
             Reading latestReading = readings.stream()
+                    .filter(r -> r.getTimestamp() != null)
                     .max(Comparator.comparing(Reading::getTimestamp))
-                    .orElse(null);
+                    .orElse(readings.get(0)); // Fallback to first if all timestamps are null
 
             LOGGER.info("Retrieved latest reading for sensor: " + sensorId);
 
@@ -196,7 +228,9 @@ public class ReadingController {
      */
     @GET
     @Path("/recent")
-    public Response getRecentReadings(@QueryParam("hours") @DefaultValue("24") int hours) {
+    public Response getRecentReadings(
+            @QueryParam("hours") @DefaultValue("24") int hours,
+            @QueryParam("limit") @DefaultValue("0") int limit) {
         try {
             if (hours <= 0 || hours > 720) { // Max 30 days
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -211,6 +245,11 @@ public class ReadingController {
                     .filter(r -> r.getTimestamp() != null && r.getTimestamp().isAfter(cutoffTime))
                     .sorted(Comparator.comparing(Reading::getTimestamp).reversed())
                     .collect(Collectors.toList());
+
+            // Apply limit if specified
+            if (limit > 0 && recentReadings.size() > limit) {
+                recentReadings = recentReadings.subList(0, limit);
+            }
 
             LOGGER.info("Retrieved " + recentReadings.size() + " readings from last " + hours + " hours");
 
@@ -271,24 +310,33 @@ public class ReadingController {
             List<Reading> allReadings = readingService.getAllReadings();
 
             if (allReadings.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(new ErrorResponse("No readings available"))
-                        .build();
+                // Return empty summary instead of 404
+                AirQualitySummary summary = new AirQualitySummary();
+                summary.totalSensors = 0;
+                summary.latestReadings = new ArrayList<>();
+                summary.timestamp = Instant.now();
+                return Response.ok(summary).build();
             }
 
             // Get latest reading per sensor
             Map<String, Reading> latestBySensor = allReadings.stream()
+                    .filter(r -> r.getSensorId() != null)
                     .collect(Collectors.groupingBy(
                             Reading::getSensorId,
                             Collectors.collectingAndThen(
-                                    Collectors.maxBy(Comparator.comparing(Reading::getTimestamp)),
+                                    Collectors.maxBy(Comparator.comparing(
+                                            Reading::getTimestamp,
+                                            Comparator.nullsLast(Comparator.naturalOrder())
+                                    )),
                                     opt -> opt.orElse(null)
                             )
                     ));
 
             AirQualitySummary summary = new AirQualitySummary();
             summary.totalSensors = latestBySensor.size();
-            summary.latestReadings = new ArrayList<>(latestBySensor.values());
+            summary.latestReadings = latestBySensor.values().stream()
+                    .filter(r -> r != null)
+                    .collect(Collectors.toList());
             summary.timestamp = Instant.now();
 
             LOGGER.info("Generated air quality summary for " + summary.totalSensors + " sensors");
@@ -462,10 +510,14 @@ public class ReadingController {
         stats.minPm25 = readings.stream().mapToDouble(Reading::getPm25).min().orElse(0);
         stats.maxPm25 = readings.stream().mapToDouble(Reading::getPm25).max().orElse(0);
 
-        // Time range
-        stats.firstReading = readings.stream().min(Comparator.comparing(Reading::getTimestamp))
+        // Time range - handle null timestamps
+        stats.firstReading = readings.stream()
+                .filter(r -> r.getTimestamp() != null)
+                .min(Comparator.comparing(Reading::getTimestamp))
                 .map(Reading::getTimestamp).orElse(null);
-        stats.lastReading = readings.stream().max(Comparator.comparing(Reading::getTimestamp))
+        stats.lastReading = readings.stream()
+                .filter(r -> r.getTimestamp() != null)
+                .max(Comparator.comparing(Reading::getTimestamp))
                 .map(Reading::getTimestamp).orElse(null);
 
         return stats;

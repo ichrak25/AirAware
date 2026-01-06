@@ -7,10 +7,10 @@ import com.mongodb.client.model.ReplaceOptions;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.bson.Document;
+import org.bson.types.ObjectId;
 import tn.airaware.api.entities.Alert;
 import tn.airaware.api.entities.Reading;
-import tn.airaware.api.config.ApiDatabase; // Add this import
-
+import tn.airaware.api.config.ApiDatabase;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -62,7 +62,14 @@ public class AlertService {
 
     /** Retrieve an alert by ID */
     public Alert findById(String id) {
+        // Try to find by string ID first
         Document doc = collection().find(Filters.eq("_id", id)).first();
+
+        // If not found, try finding by ObjectId (in case the ID is a valid ObjectId hex string)
+        if (doc == null && ObjectId.isValid(id)) {
+            doc = collection().find(Filters.eq("_id", new ObjectId(id))).first();
+        }
+
         return doc != null ? toAlert(doc) : null;
     }
 
@@ -95,25 +102,60 @@ public class AlertService {
 
     /** Mark an alert as resolved */
     public void resolveAlert(String id) {
-        collection().updateOne(Filters.eq("_id", id),
-                new Document("$set", new Document("resolved", true)));
+        // Try string ID first
+        long modified = collection().updateOne(
+                Filters.eq("_id", id),
+                new Document("$set", new Document("resolved", true))
+        ).getModifiedCount();
+
+        // If not found and valid ObjectId, try with ObjectId
+        if (modified == 0 && ObjectId.isValid(id)) {
+            collection().updateOne(
+                    Filters.eq("_id", new ObjectId(id)),
+                    new Document("$set", new Document("resolved", true))
+            );
+        }
     }
 
     /** Delete an alert */
     public void deleteAlert(String id) {
-        collection().deleteOne(Filters.eq("_id", id));
+        // Try string ID first
+        long deleted = collection().deleteOne(Filters.eq("_id", id)).getDeletedCount();
+
+        // If not found and valid ObjectId, try with ObjectId
+        if (deleted == 0 && ObjectId.isValid(id)) {
+            collection().deleteOne(Filters.eq("_id", new ObjectId(id)));
+        }
     }
 
     /** Helper: Convert MongoDB Document → Alert object */
     private Alert toAlert(Document doc) {
         Alert alert = new Alert();
-        alert.setId(doc.getString("_id"));
+
+        // ✅ FIX: Handle both ObjectId and String _id types
+        Object idObj = doc.get("_id");
+        if (idObj instanceof ObjectId) {
+            alert.setId(((ObjectId) idObj).toHexString());
+        } else if (idObj != null) {
+            alert.setId(idObj.toString());
+        }
+
         alert.setType(doc.getString("type"));
         alert.setSeverity(doc.getString("severity"));
         alert.setMessage(doc.getString("message"));
-        if (doc.getString("triggeredAt") != null) {
-            alert.setTriggeredAt(Instant.parse(doc.getString("triggeredAt")));
+
+        // ✅ FIX: Handle triggeredAt as both String and Date
+        Object triggeredAtObj = doc.get("triggeredAt");
+        if (triggeredAtObj instanceof String) {
+            try {
+                alert.setTriggeredAt(Instant.parse((String) triggeredAtObj));
+            } catch (Exception e) {
+                alert.setTriggeredAt(Instant.now());
+            }
+        } else if (triggeredAtObj instanceof java.util.Date) {
+            alert.setTriggeredAt(((java.util.Date) triggeredAtObj).toInstant());
         }
+
         alert.setSensorId(doc.getString("sensorId"));
         alert.setResolved(doc.getBoolean("resolved", false));
 
@@ -122,17 +164,48 @@ public class AlertService {
         if (readingDoc != null) {
             Reading reading = new Reading();
             reading.setSensorId(readingDoc.getString("sensorId"));
-            if (readingDoc.getString("timestamp") != null) {
-                reading.setTimestamp(Instant.parse(readingDoc.getString("timestamp")));
+
+            Object timestampObj = readingDoc.get("timestamp");
+            if (timestampObj instanceof String) {
+                try {
+                    reading.setTimestamp(Instant.parse((String) timestampObj));
+                } catch (Exception e) {
+                    // Ignore parse errors
+                }
+            } else if (timestampObj instanceof java.util.Date) {
+                reading.setTimestamp(((java.util.Date) timestampObj).toInstant());
             }
-            reading.setTemperature(readingDoc.getDouble("temperature"));
-            reading.setHumidity(readingDoc.getDouble("humidity"));
-            reading.setCo2(readingDoc.getDouble("co2"));
-            reading.setPm25(readingDoc.getDouble("pm25"));
-            reading.setVoc(readingDoc.getDouble("voc"));
+
+            // ✅ FIX: Handle numeric types safely (Integer, Long, Double)
+            reading.setTemperature(getDoubleValue(readingDoc, "temperature"));
+            reading.setHumidity(getDoubleValue(readingDoc, "humidity"));
+            reading.setCo2(getDoubleValue(readingDoc, "co2"));
+            reading.setPm25(getDoubleValue(readingDoc, "pm25"));
+            reading.setVoc(getDoubleValue(readingDoc, "voc"));
+
             alert.setReading(reading);
         }
 
         return alert;
+    }
+
+    /** Helper: Safely get a double value from a document (handles Integer, Long, Double) */
+    private Double getDoubleValue(Document doc, String key) {
+        Object value = doc.get(key);
+        if (value == null) {
+            return null;
+        } else if (value instanceof Double) {
+            return (Double) value;
+        } else if (value instanceof Integer) {
+            return ((Integer) value).doubleValue();
+        } else if (value instanceof Long) {
+            return ((Long) value).doubleValue();
+        } else {
+            try {
+                return Double.parseDouble(value.toString());
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
     }
 }

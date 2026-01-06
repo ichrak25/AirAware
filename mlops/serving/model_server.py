@@ -1,6 +1,6 @@
 """
-AirAware MLOps - FastAPI Model Server
-REST API for model inference (with absolute path handling)
+AirAware MLOps - FastAPI Model Server (Enhanced with Alerting)
+REST API for model inference with automatic alert generation
 """
 
 from fastapi import FastAPI, HTTPException
@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import pandas as pd
 import logging
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 import sys
 import os
@@ -21,6 +21,14 @@ sys.path.insert(0, str(MLOPS_DIR))
 from models import AnomalyDetector, AQIPredictor, EnsembleModel
 from data import FeatureEngineer, DataPreprocessor
 
+# Import the alerting service
+try:
+    from monitoring.alerting import MLAlertingService, create_alerting_service
+    ALERTING_AVAILABLE = True
+except ImportError:
+    ALERTING_AVAILABLE = False
+    logging.warning("Alerting module not available - alerts will be disabled")
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
@@ -31,8 +39,8 @@ logger = logging.getLogger(__name__)
 # Create FastAPI app
 app = FastAPI(
     title="AirAware ML API",
-    version="1.0.0",
-    description="Machine Learning API for AirAware Air Quality Monitoring"
+    version="2.0.0",
+    description="Machine Learning API for AirAware Air Quality Monitoring (with Alerting)"
 )
 
 # CORS middleware
@@ -50,6 +58,7 @@ aqi_predictor = None
 ensemble_model = None
 feature_engineer = None
 preprocessor = None
+alerting_service = None
 
 
 # ============================================================================
@@ -76,6 +85,16 @@ class PredictionResponse(BaseModel):
     is_anomaly: bool
     risk_level: str
     timestamp: str
+    alerts_generated: Optional[int] = 0
+
+
+class AlertConfig(BaseModel):
+    """Configuration for alerting thresholds"""
+    anomaly_threshold: float = 0.7
+    aqi_warning: float = 100
+    aqi_unhealthy: float = 150
+    aqi_dangerous: float = 200
+    enabled: bool = True
 
 
 # ============================================================================
@@ -84,12 +103,12 @@ class PredictionResponse(BaseModel):
 
 @app.on_event("startup")
 async def load_models():
-    """Load models on startup"""
+    """Load models and initialize alerting on startup"""
     global anomaly_detector, aqi_predictor, ensemble_model
-    global feature_engineer, preprocessor
+    global feature_engineer, preprocessor, alerting_service
 
     logger.info("=" * 60)
-    logger.info("🚀 Starting AirAware ML API Server")
+    logger.info("🚀 Starting AirAware ML API Server v2.0")
     logger.info("=" * 60)
     logger.info(f"Working directory: {os.getcwd()}")
     logger.info(f"MLOps directory: {MLOPS_DIR}")
@@ -133,6 +152,24 @@ async def load_models():
         ensemble_model.set_models(anomaly_detector, aqi_predictor, None)
         logger.info("✅ Ensemble model created")
 
+        # Initialize alerting service
+        if ALERTING_AVAILABLE:
+            alerting_service = create_alerting_service({
+                "webhook_url": os.getenv(
+                    "BACKEND_ALERT_URL",
+                    "http://localhost:8080/api-1.0-SNAPSHOT/api/alerts"
+                ),
+                "slack_webhook": os.getenv("SLACK_WEBHOOK_URL"),
+                "anomaly_threshold": 0.7,
+                "aqi_warning": 100,
+                "aqi_unhealthy": 150,
+                "aqi_dangerous": 200
+            })
+            logger.info("✅ Alerting service initialized")
+            logger.info("🔔 ML-based alerts are ENABLED")
+        else:
+            logger.warning("⚠️ Alerting service not available")
+
         logger.info("=" * 60)
         logger.info("✅ All models loaded successfully!")
         logger.info("=" * 60)
@@ -145,10 +182,6 @@ async def load_models():
         logger.error("\n💡 Solution:")
         logger.error(f"   1. Navigate to: {MLOPS_DIR}")
         logger.error("   2. Train models: python -m training.trainer")
-        logger.error("   3. Verify files exist:")
-        logger.error(f"      {MLOPS_DIR / 'models/anomaly_detector.pkl'}")
-        logger.error(f"      {MLOPS_DIR / 'models/aqi_predictor.pkl'}")
-        logger.error(f"      {MLOPS_DIR / 'models/preprocessor.pkl'}")
         logger.error("=" * 60)
         raise
 
@@ -162,7 +195,6 @@ async def load_models():
         raise
 
     finally:
-        # Restore original directory
         os.chdir(original_dir)
 
 
@@ -181,8 +213,13 @@ async def root():
     """Root endpoint"""
     return {
         "service": "AirAware ML API",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "status": "running",
+        "features": {
+            "prediction": True,
+            "anomaly_detection": True,
+            "alerting": ALERTING_AVAILABLE and alerting_service is not None
+        },
         "docs": "/docs",
         "health": "/health",
         "mlops_dir": str(MLOPS_DIR)
@@ -203,6 +240,7 @@ async def health_check():
     return {
         "status": "healthy" if models_loaded else "degraded",
         "models_loaded": models_loaded,
+        "alerting_enabled": alerting_service is not None,
         "mlops_dir": str(MLOPS_DIR),
         "timestamp": datetime.now().isoformat()
     }
@@ -210,9 +248,11 @@ async def health_check():
 
 @app.post("/predict", response_model=PredictionResponse)
 async def predict(reading: SensorReading):
-    """Predict air quality for a single sensor reading"""
+    """
+    Predict air quality for a single sensor reading
+    Also generates alerts if thresholds are exceeded
+    """
     try:
-        # Check if models are loaded
         if ensemble_model is None:
             raise HTTPException(
                 status_code=503,
@@ -226,71 +266,78 @@ async def predict(reading: SensorReading):
 
         logger.info(f"Processing prediction for sensor: {reading.sensorId}")
 
-        # Feature engineering (includes all rolling features, temporal features, etc.)
+        # Feature engineering
         df_features = feature_engineer.engineer_features(df)
         logger.debug(f"Engineered features shape: {df_features.shape}")
 
-        # ✅ CRITICAL: Remove target column if it exists (we're predicting it!)
-        if 'aqi_pm25' in df_features.columns:
-            df_features = df_features.drop(columns=['aqi_pm25'])
-            logger.debug("Removed target column 'aqi_pm25' from features")
-
-        # ✅ Remove any other target-related columns
-        target_related = ['aqi_category', 'aqi_pm10', 'target']
-        for col in target_related:
+        # Remove target columns
+        target_cols = ['aqi_pm25', 'aqi_category', 'aqi_pm10', 'target']
+        for col in target_cols:
             if col in df_features.columns:
                 df_features = df_features.drop(columns=[col])
-                logger.debug(f"Removed target-related column '{col}'")
 
-        # =========================================================
-        # ✅ CRITICAL FIX: align inference features with training
-        # =========================================================
-
-        # Features expected by the preprocessor (during fit)
+        # Align features with training
         expected_features = preprocessor.feature_names
-
         for col in expected_features:
             if col not in df_features.columns:
-                if col == "aqi_category":
-                    df_features[col] = "Unknown"   # categorical safe default
-                elif col == "location":
-                    df_features[col] = "unknown"   # categorical safe default
+                if col in ["aqi_category", "location"]:
+                    df_features[col] = "unknown"
                 else:
-                    df_features[col] = 0.0          # numeric fallback
+                    df_features[col] = 0.0
 
-        # Reorder columns EXACTLY as training
         df_features = df_features[expected_features]
 
-        # Preprocess (this will align features with training)
+        # Preprocess
         X, _ = preprocessor.transform(df_features)
-
         logger.debug(f"Preprocessed features shape: {X.shape}")
-        logger.debug(f"Features: {X.columns.tolist()[:10]}...")  # Show first 10
 
-        # Predict using ensemble
+        # Predict
         results = ensemble_model.predict(X)
-        logger.info(f"Prediction complete for {reading.sensorId}: AQI={results.get('predicted_aqi', 0):.1f}")
+
+        predicted_aqi = float(results.get('predicted_aqi', 0))
+        anomaly_score = float(results.get('anomaly_score', 0))
+        is_anomaly = bool(results.get('is_anomaly', False))
+        risk_level = str(results.get('risk_level', 'UNKNOWN'))
+
+        logger.info(f"Prediction complete for {reading.sensorId}: "
+                    f"AQI={predicted_aqi:.1f}, Anomaly={is_anomaly}, Risk={risk_level}")
+
+        # 🔔 GENERATE ALERTS
+        alerts_generated = 0
+        if alerting_service is not None:
+            try:
+                alerts = alerting_service.process_prediction(
+                    prediction={
+                        "predicted_aqi": predicted_aqi,
+                        "anomaly_score": anomaly_score,
+                        "is_anomaly": is_anomaly,
+                        "risk_level": risk_level
+                    },
+                    sensor_id=reading.sensorId
+                )
+                alerts_generated = len(alerts)
+                if alerts_generated > 0:
+                    logger.info(f"🚨 Generated {alerts_generated} alert(s) for {reading.sensorId}")
+            except Exception as e:
+                logger.error(f"Alert generation failed: {e}")
 
         return PredictionResponse(
             sensorId=reading.sensorId,
-            predicted_aqi=float(results.get('predicted_aqi', 0)),
-            anomaly_score=float(results.get('anomaly_score', 0)),
-            is_anomaly=bool(results.get('is_anomaly', False)),
-            risk_level=str(results.get('risk_level', 'UNKNOWN')),
-            timestamp=datetime.now().isoformat()
+            predicted_aqi=predicted_aqi,
+            anomaly_score=anomaly_score,
+            is_anomaly=is_anomaly,
+            risk_level=risk_level,
+            timestamp=datetime.now().isoformat(),
+            alerts_generated=alerts_generated
         )
 
     except HTTPException:
         raise
-
     except Exception as e:
         logger.error(f"Prediction failed for {reading.sensorId}: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Prediction failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
 
 
 @app.post("/predict/batch")
@@ -298,6 +345,7 @@ async def predict_batch(readings: List[SensorReading]):
     """Batch predictions for multiple sensor readings"""
     results = []
     errors = []
+    total_alerts = 0
 
     logger.info(f"Processing batch prediction for {len(readings)} readings")
 
@@ -305,6 +353,7 @@ async def predict_batch(readings: List[SensorReading]):
         try:
             result = await predict(reading)
             results.append(result)
+            total_alerts += result.alerts_generated or 0
         except Exception as e:
             logger.error(f"Failed to process reading {idx} ({reading.sensorId}): {e}")
             errors.append({
@@ -313,13 +362,14 @@ async def predict_batch(readings: List[SensorReading]):
                 "error": str(e)
             })
 
-    logger.info(f"Batch processing complete: {len(results)} success, {len(errors)} errors")
+    logger.info(f"Batch complete: {len(results)} success, {len(errors)} errors, {total_alerts} alerts")
 
     return {
         "predictions": results,
         "total": len(readings),
         "successful": len(results),
         "failed": len(errors),
+        "alerts_generated": total_alerts,
         "errors": errors if errors else None
     }
 
@@ -348,11 +398,51 @@ async def get_model_info():
             "preprocessor": {
                 "loaded": preprocessor is not None,
                 "features_count": len(preprocessor.feature_names) if preprocessor else 0
+            },
+            "alerting": {
+                "enabled": alerting_service is not None,
+                "thresholds": alerting_service.thresholds if alerting_service else None
             }
         }
     except Exception as e:
         logger.error(f"Failed to get model info: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/alerting/configure")
+async def configure_alerting(config: AlertConfig):
+    """Update alerting configuration"""
+    global alerting_service
+
+    if not ALERTING_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Alerting module not available")
+
+    if not config.enabled:
+        alerting_service = None
+        return {"status": "Alerting disabled"}
+
+    alerting_service = create_alerting_service({
+        "anomaly_threshold": config.anomaly_threshold,
+        "aqi_warning": config.aqi_warning,
+        "aqi_unhealthy": config.aqi_unhealthy,
+        "aqi_dangerous": config.aqi_dangerous
+    })
+
+    return {
+        "status": "Alerting configured",
+        "thresholds": alerting_service.thresholds
+    }
+
+
+@app.get("/alerting/status")
+async def alerting_status():
+    """Get current alerting status"""
+    return {
+        "enabled": alerting_service is not None,
+        "thresholds": alerting_service.thresholds if alerting_service else None,
+        "backend_url": alerting_service.backend_url if alerting_service else None,
+        "slack_configured": (alerting_service.slack_webhook is not None) if alerting_service else False
+    }
 
 
 # ============================================================================
@@ -363,13 +453,18 @@ if __name__ == "__main__":
     import uvicorn
 
     print("\n" + "=" * 70)
-    print("🚀 Starting AirAware ML API Server")
+    print("🚀 Starting AirAware ML API Server v2.0 (with Alerting)")
     print("=" * 70)
     print(f"\n📁 MLOps Directory: {MLOPS_DIR}")
-    print("\n📍 Server will be available at:")
+    print("\n🔗 Server will be available at:")
     print("   - API: http://localhost:8000")
     print("   - Docs: http://localhost:8000/docs")
     print("   - Health: http://localhost:8000/health")
+    print("\n🔔 Alerting Features:")
+    print("   - ML-based anomaly alerts")
+    print("   - AQI threshold alerts")
+    print("   - Risk level alerts")
+    print("   - Webhook integration with Java backend")
     print("\n" + "=" * 70 + "\n")
 
     uvicorn.run(
