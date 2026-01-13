@@ -46,7 +46,7 @@ captionpos=b
 \fancyhf{}
 \rhead{\thepage}
 \lhead{Scope Statement}
-\lhead{AIR-AWARE: Indoor Air Quality Intelligent Surveillance System}
+\lhead{AIR-AWARE: Outdoor Air Quality Intelligent Surveillance System}
 \renewcommand{\headrulewidth}{0.4pt}
 
 \begin{document}
@@ -59,11 +59,7 @@ captionpos=b
 \vspace*{2cm} % * force l'espacement même dans titlepage
 \includegraphics[width=0.4\textwidth]{supcom.png}%
 
-
 \vspace{2cm}
-
-
-
 
 \vspace{1cm}
 \rule{\textwidth}{0.4pt}
@@ -73,7 +69,7 @@ captionpos=b
 {\Huge \textbf{\scshape Scope Statement}}
 \\
 
-{\Huge \textbf{\scshape AIR-AWARE: Indoor Air Quality Intelligent Surveillance System}}
+{\Huge \textbf{\scshape AIR-AWARE: Outdoor Air Quality Intelligent Surveillance System}}
 \end{center}
 
 \vspace{0.3cm}
@@ -101,33 +97,29 @@ Mohamed Becha Kaaniche
 
 \section{Concept}
 \subsection{Project Context}
-Indoor air quality (IAQ) has become a growing public health concern as individuals spend nearly 90\% of their time in enclosed environments such as homes, offices, and educational institutions. Numerous studies conducted by the World Health Organization (WHO) and environmental agencies have highlighted that the concentration of air pollutants indoors is often two to five times higher than outdoors. These pollutants---originating from building materials, cleaning products, combustion processes, and human activity---can have serious effects on health, leading to respiratory, cardiovascular, and allergic diseases.
-\\
-\\
-In addition to health implications, poor indoor air quality negatively impacts comfort, productivity, and overall well-being. Conventional air quality monitoring solutions are typically expensive, limited in functionality, or unable to provide real-time, data-driven insights.
-\\
-\\
-In this context, the AIR-AWARE project proposes the design and implementation of an Intelligent Indoor Air Quality Surveillance System that combines IoT technologies, artificial intelligence, and cloud-based analytics to monitor, analyze, and predict variations in indoor air quality. This system aims to empower individuals, institutions, and organizations with real-time information and actionable recommendations to maintain healthier indoor environments.
+Outdoor air quality (OAQ) has become a growing public health concern as individuals are exposed to air pollutants in urban, industrial, and traffic-prone environments. Numerous studies conducted by the World Health Organization (WHO) and environmental agencies have highlighted that exposure to pollutants such as particulate matter (PM$_{2.5}$/PM$_{10}$), carbon dioxide (CO$_{2}$), volatile organic compounds (VOCs), and carbon monoxide (CO) can have serious effects on health, including respiratory, cardiovascular, and allergic diseases.  
+
+In addition to health implications, poor outdoor air quality negatively impacts environmental comfort, urban planning, and public awareness. Conventional air quality monitoring stations are typically expensive, sparse, and unable to provide localized, real-time data.  
+
+In this context, the AIR-AWARE project proposes the design and implementation of an Intelligent Outdoor Air Quality Surveillance System that combines IoT technologies, artificial intelligence, and cloud-based analytics to monitor, analyze, and predict variations in outdoor air quality. This system empowers authorities, researchers, and citizens with real-time information and actionable recommendations for a healthier outdoor environment.
 
 \subsection{Problem Statement}
-Despite the increasing awareness of environmental health, indoor air pollution remains an underestimated threat. Many residential, educational, and professional spaces suffer from high levels of airborne pollutants such as fine particulate matter (PM$_{2.5}$/PM$_{10}$), carbon dioxide (CO$_{2}$), and volatile organic compounds (VOCs), as well as unfavorable temperature and humidity conditions. These factors collectively degrade indoor air quality and directly contribute to a range of health issues, including asthma, allergies, respiratory irritation, and fatigue.
-\\
-\\
-Existing monitoring solutions are often costly, technically complex, or limited in scope, making them inaccessible to the general public. Moreover, most current systems are reactive rather than proactive, offering basic data collection without intelligent analysis or predictive capabilities. This lack of automation prevents users from receiving early warnings, adaptive recommendations, or long-term insights about air quality trends.
-\\
-\\
-There is therefore a critical need for an integrated, intelligent, and affordable system capable of continuously monitoring indoor air quality, detecting anomalies in real time, and providing personalized, data-driven recommendations to improve environmental health. The AIR-AWARE system is designed to fill this gap by combining IoT-based sensing, secure cloud connectivity, and AI-powered analytics within a user-friendly platform.
+Despite increasing awareness of environmental health, outdoor air pollution remains a critical concern in urban and industrial areas. Many public spaces, streets, parks, and residential zones are exposed to high levels of PM$_{2.5}$/PM$_{10}$, CO$_{2}$, CO, and VOCs, which degrade air quality and increase the risk of respiratory and cardiovascular diseases.  
+
+Existing outdoor monitoring solutions are often limited to a few fixed stations, are expensive, and provide low spatial resolution. This prevents proactive management of air quality and hinders timely public alerts. There is a critical need for a comprehensive, intelligent, and cost-effective system capable of continuously monitoring outdoor air quality, detecting anomalies, and providing predictive insights.  
+
+The AIR-AWARE system is designed to fill this gap by combining IoT-based sensing, weatherproof hardware, cloud analytics, and AI-powered predictive models, with user-friendly interfaces for both authorities and the public.
 
 \subsection{Objectives}
 
 \subsubsection{Principal Objective}
-The main objective of the AIR-AWARE project is to design and develop an intelligent ecosystem for real-time monitoring, analysis, and improvement of indoor air quality. This ecosystem integrates IoT sensors, cloud-based data management, and artificial intelligence models to ensure continuous surveillance, predictive analytics, and actionable recommendations aimed at maintaining healthy and safe indoor environments.
+The main objective of the AIR-AWARE project is to design and develop an intelligent ecosystem for real-time monitoring, analysis, and improvement of outdoor air quality. This ecosystem integrates IoT sensors, cloud-based data management, and AI models to ensure continuous surveillance, predictive analytics, and actionable recommendations aimed at maintaining healthy and safe outdoor environments.
 
 \subsubsection{Specific Objectives}
 To achieve this overarching goal, the project defines the following specific objectives:
 
 \begin{enumerate}
-  \item \textbf{Continuous Measurement:} Implement a network of IoT sensors capable of accurately measuring key indoor air parameters such as particulate matter (PM$_{2.5}$/PM$_{10}$), carbon dioxide (CO$_{2}$), volatile organic compounds (VOCs), temperature, and humidity.
+  \item \textbf{Continuous Measurement:} Implement a network of weatherproof IoT sensors capable of accurately measuring key outdoor air parameters such as PM$_{2.5}$/PM$_{10}$, CO$_{2}$, CO, VOCs, temperature, and humidity.
   
   \item \textbf{Real-Time Analysis and Alerts:} Develop a data processing pipeline that performs real-time validation, anomaly detection, and triggers instant alerts when pollutant levels exceed predefined thresholds.
   
@@ -136,62 +128,66 @@ To achieve this overarching goal, the project defines the following specific obj
   \item \textbf{User-Centric Visualization:} Design a Progressive Web Application (PWA) providing intuitive dashboards, historical data visualization, and personalized recommendations based on user preferences and environmental context.
   
   \item \textbf{Data Management and Scalability:} Implement a secure cloud backend using a scalable NoSQL database (MongoDB) to handle large volumes of sensor data, ensuring reliability, performance, and fault tolerance.
-  \item \textbf{Location Tracking via LBS:} Integrate Location-Based Services (LBS) to enable dynamic mapping of indoor air quality data, geolocation of devices, and contextual analysis across multiple monitored areas, facilitating spatial correlation between environment and air quality metrics.
-  \item \textbf{Automation and Maintenance:} Introduce automatic sensor calibration, drift detection, and self-diagnosis mechanisms to maintain data accuracy and reduce manual intervention.
   
-  \item \textbf{Sustainability and Accessibility:} Deliver a cost-effective and energy-efficient solution accessible to both residential and professional users, contributing to healthier indoor spaces and sustainable smart building environments.
+  \item \textbf{Location Tracking via GPS/LBS:} Integrate GPS/Location-Based Services (LBS) to enable mapping of outdoor air quality data, geolocation of devices, and contextual analysis across multiple monitored zones.
+  
+  \item \textbf{Autonomous Operation:} Introduce solar-assisted battery systems to maintain continuous operation in outdoor environments without relying solely on grid power.
+  
+  \item \textbf{Sustainability and Accessibility:} Deliver a cost-effective and energy-efficient solution accessible for urban, industrial, and residential outdoor areas.
 \end{enumerate}
+
+% -- Le reste du document reste inchangé, simplement remplacer "indoor" par "outdoor" partout, et mentionner weatherproof et autonomie solaire/batterie.
+
 \section{Scope and Target Markets}
 
-The AIR-AWARE project falls within the domain of intelligent indoor air quality monitoring systems, combining Internet of Things (IoT) technologies, Artificial Intelligence (AI), and Location-Based Services (LBS) to provide a comprehensive, connected, and predictive solution.
+The AIR-AWARE project falls within the domain of intelligent indoor and outdoor air quality monitoring systems, combining Internet of Things (IoT) technologies, Artificial Intelligence (AI), and Location-Based Services (LBS) to provide a comprehensive, connected, and predictive solution.
 
-The project scope covers the entire cycle of data collection, processing, visualization, and analysis of environmental parameters obtained from sensors deployed in various indoor environments.
+The project scope covers the entire cycle of data collection, processing, visualization, and analysis of environmental parameters obtained from sensors deployed in various indoor and outdoor environments.
 
-The system targets residential, professional, educational, and industrial spaces where air quality directly impacts health, comfort, and productivity. Thanks to its modular and scalable architecture, AIR-AWARE can be deployed in both small domestic areas and large multi-site infrastructures.
+The system targets residential, professional, educational, industrial, and public outdoor spaces where air quality directly impacts health, comfort, and productivity. Thanks to its modular and scalable architecture, AIR-AWARE can be deployed in small domestic areas, large multi-site infrastructures, and outdoor urban or rural environments.
 
 \subsection{Primary Markets}
 
-The primary markets include sectors where indoor air quality monitoring is a critical concern for public health, comfort, and operational efficiency:
+The primary markets include sectors where air quality monitoring is critical for public health, comfort, and operational efficiency:
 
 \subsubsection{Residential Sector}
-Homes, apartments, and residential buildings requiring continuous air quality monitoring. Families, elderly individuals, or people with respiratory conditions seeking personalized, real-time insights through a mobile interface.
+Homes, apartments, and residential buildings requiring continuous air quality monitoring. Families, elderly individuals, or people with respiratory conditions seeking personalized, real-time insights through a mobile interface. Outdoor areas such as private gardens or courtyards can also be monitored.
 
 \subsubsection{Corporate and Office Environments}
-Offices, coworking spaces, and administrative buildings where air quality directly affects employee productivity and well-being. Companies committed to sustainability and workplace health initiatives.
+Offices, coworking spaces, and administrative buildings where air quality directly affects employee productivity and well-being. Outdoor areas like terraces, parking lots, or campus zones can also benefit from monitoring.
 
 \subsubsection{Educational Institutions}
-Classrooms, laboratories, and lecture halls requiring optimal air conditions to ensure a healthy and productive learning environment.
+Classrooms, laboratories, and lecture halls requiring optimal air conditions. Outdoor playgrounds, sports fields, and campus areas can also be monitored for environmental safety.
 
 \subsubsection{Healthcare and Medical Facilities}
-Hospitals, clinics, laboratories, and retirement homes where maintaining clean air is essential for infection control and patient health.
+Hospitals, clinics, laboratories, and retirement homes where clean air is essential. Outdoor waiting areas, gardens, and hospital entrances can also be monitored for pollution levels.
 
 \subsection{Secondary Markets}
 
 The secondary markets represent areas where the system can be adapted or extended to deliver additional value beyond its core applications:
 
 \subsubsection{Industrial and Logistics Sector}
-Factories, warehouses, and production zones requiring precise monitoring of gas emissions, dust, and chemical pollutants. Integration with energy management or industrial safety systems to ensure compliance and operational efficiency.
+Factories, warehouses, and production zones requiring precise monitoring of indoor and outdoor gas emissions, dust, and chemical pollutants. Integration with energy management or industrial safety systems ensures compliance and operational efficiency.
 
 \subsubsection{Hospitality and Commercial Sector}
-Hotels, restaurants, shopping malls, and fitness centers where air quality directly influences customer satisfaction and experience.
+Hotels, restaurants, shopping malls, and fitness centers where indoor and outdoor air quality directly influences customer satisfaction and experience.
 
 \subsubsection{Public Institutions and Municipalities}
-City halls, public schools, libraries, and cultural centers aiming to deploy large-scale environmental monitoring networks for community well-being.
+City halls, public schools, libraries, cultural centers, parks, streets, and outdoor gathering spaces aiming to deploy large-scale environmental monitoring networks for community well-being.
 
 \subsubsection{Research and Innovation Sector}
-Universities and research laboratories focusing on environmental modeling, urban health, and smart cities, using AIR-AWARE as a research and experimentation platform.
+Universities and research laboratories focusing on environmental modeling, urban health, and smart cities, using AIR-AWARE as a research and experimentation platform for both indoor and outdoor monitoring.
+
 \section{Functional Needs}
 
-The AIR-AWARE system is designed to ensure real-time monitoring, analysis, and control of indoor air quality through an intelligent, connected network of IoT devices and data-driven software components.
-\\
-\\
+The AIR-AWARE system is designed to ensure real-time monitoring, analysis, and control of indoor and outdoor air quality through an intelligent, connected network of IoT devices and data-driven software components.
+
 The functional needs are organized into three main categories: data acquisition, data processing and analysis, and user interaction and alerting.
 
 \subsection{Data Acquisition and Sensing Layer}
 
 This layer is responsible for collecting environmental data through multiple sensors integrated into the AIR-AWARE device.
-\\
-\\
+
 \textbf{Key functionalities:}
 \begin{itemize}
   \item Continuous measurement of air quality parameters, including:
@@ -202,36 +198,36 @@ This layer is responsible for collecting environmental data through multiple sen
     \item Carbon Monoxide (CO) concentration
     \item Volatile Organic Compounds (VOCs)
     \item Particulate Matter (PM$_{2.5}$ / PM$_{10}$)
+    \item Outdoor pollutants (NO$_{2}$, O$_{3}$, SO$_{2}$)
   \end{itemize}
   \item Automatic calibration and synchronization of sensors to ensure data accuracy and reliability.
   \item Data collection at configurable time intervals, depending on the use case (e.g., every 30 seconds or every 5 minutes).
-  \item Integration with Location-Based Services (LBS) for dynamic tracking of sensor positions in large buildings or multi-zone installations.
+  \item Integration with Location-Based Services (LBS) and GPS for dynamic tracking of sensor positions in large buildings, multi-zone installations, and outdoor urban or rural areas.
+  \item Protective outdoor housing (IP65+) for weather resistance and durability.
 \end{itemize}
 
 \subsection{Data Processing and Intelligence Layer}
 
 This layer performs data aggregation, cleaning, and analysis using intelligent algorithms to interpret environmental conditions.
-\\
-\\
+
 \textbf{Key functionalities:}
 \begin{itemize}
   \item Local preprocessing on the edge device (microcontroller or Raspberry Pi) to reduce latency and bandwidth use.
   \item Centralized data storage in the cloud for long-term historical analysis.
   \item Application of AI and Machine Learning models to:
   \begin{itemize}
-    \item Detect anomalies and identify pollution peaks.
-    \item Predict air quality degradation trends.
-    \item Recommend corrective actions such as ventilation or purification.
+    \item Detect anomalies and identify pollution peaks in indoor and outdoor environments.
+    \item Predict air quality degradation trends considering weather, traffic, and seasonal effects.
+    \item Recommend corrective actions such as ventilation, purification, or public warnings.
   \end{itemize}
   \item Real-time alert generation based on threshold violations or predictive risk patterns.
-  \item Automatic synchronization between the edge and cloud components to maintain data consistency.
+  \item Automatic synchronization between edge and cloud components to maintain data consistency.
 \end{itemize}
 
 \subsection{User Interaction and Visualization Layer}
 
 This layer ensures that users can easily access, understand, and act upon air quality data through an intuitive interface.
-\\
-\\
+
 \textbf{Key functionalities:}
 \begin{itemize}
   \item A PWA displaying:
@@ -239,141 +235,115 @@ This layer ensures that users can easily access, understand, and act upon air qu
     \item Real-time sensor readings.
     \item Historical graphs and trend visualizations.
     \item Air quality index (AQI) indicators with color-coded severity levels.
+    \item Interactive maps showing indoor and outdoor air quality variations across rooms, buildings, streets, and parks.
   \end{itemize}
   \item Push notifications and SMS/email alerts when critical thresholds are exceeded.
-  \item Location-based visualization, showing air quality variations across different rooms or buildings.
+  \item Location-based visualization, showing air quality variations across different zones.
   \item Personalized user profiles allowing threshold customization and alert preferences.
   \item Administrative access for system management, device registration, and user control.
 \end{itemize}
 
 \subsection{Communication and Integration Layer}
 
-To ensure a seamless data flow, the AIR-AWARE system integrates multiple communication protocols.
-\\
-\\
 \textbf{Key functionalities:}
 \begin{itemize}
-  \item Support for Wi-Fi, Bluetooth Low Energy (BLE), and LoRaWAN for long-range communication.
+  \item Support for Wi-Fi, Bluetooth Low Energy (BLE), LoRaWAN, LTE-M/NB-IoT for long-range outdoor communication.
   \item Secure MQTT or HTTP-based APIs for transmitting data between devices and the cloud.
-  \item Compatibility with third-party platforms (e.g., Google Cloud IoT, AWS IoT Core) for scalability and interoperability.
+  \item Compatibility with third-party platforms (e.g., Google Cloud IoT, AWS IoT Core, municipal smart city platforms) for scalability and interoperability.
 \end{itemize}
 
 \subsection{Maintenance and System Reliability}
 
-Ensuring reliability and continuity of service is a key functional requirement.
-\\
-\\
 \textbf{Key functionalities:}
 \begin{itemize}
   \item Self-diagnostic procedures to detect sensor malfunction or data loss.
   \item Over-the-air (OTA) firmware updates for easy maintenance.
   \item Encrypted data transmission and user authentication to guarantee security and privacy.
   \item Redundancy mechanisms and backup storage to prevent data loss.
+  \item Regular maintenance alerts for outdoor sensors (dust, debris, extreme weather exposure).
 \end{itemize}
+
 \section{Non-Functional Requirements}
 
-The AIR-AWARE system must not only fulfill its functional objectives but also ensure efficiency, reliability, security, and user satisfaction across various operational contexts.
-
-These non-functional requirements define the qualitative attributes that guarantee the system’s overall performance, robustness, and usability.
-
 \subsection{Performance and Efficiency}
-
 \begin{itemize}
-  \item The system must ensure real-time data collection and processing, with a maximum latency of less than 2 seconds between sensor measurement and cloud synchronization.
-  \item The sensors should operate efficiently, consuming minimal power to support long-term deployment (battery life exceeding 6 months for low-power devices).
-  \item The data processing and AI modules must handle large data volumes (up to thousands of sensor inputs simultaneously) without degradation in performance.
-  \item The dashboard must refresh and display updated values instantly for smooth user experience.
+  \item Real-time data collection and processing with latency < 2 seconds between sensor measurement and cloud synchronization.
+  \item Sensors optimized for low-power consumption, with long-term deployment (>6 months battery life for low-power devices, solar support for outdoor nodes).
+  \item Data processing and AI modules must handle large volumes of indoor and outdoor sensor data without performance degradation.
+  \item Dashboard must refresh instantly for smooth user experience.
 \end{itemize}
 
 \subsection{Reliability and Availability}
-
 \begin{itemize}
-  \item The system must maintain an availability rate of at least 99\% to ensure continuous monitoring.
-  \item In case of network or sensor failure, the device should store data locally and automatically resynchronize once connectivity is restored.
-  \item Each hardware component should undergo periodic self-testing to detect malfunction or calibration drift.
-  \item The cloud infrastructure must support redundant backups to prevent data loss.
+  \item Availability rate ≥ 99\% to ensure continuous monitoring.
+  \item Offline data storage for network outages and automatic resynchronization.
+  \item Outdoor hardware designed to withstand weather conditions, with periodic self-testing.
+  \item Redundant cloud backups to prevent data loss.
 \end{itemize}
 
 \subsection{Security and Privacy}
-
 \begin{itemize}
-  \item All communications between sensors, gateways, and servers must use end-to-end encryption (e.g., TLS 1.3).
-  \item User credentials and sensitive data must be hashed and securely stored in compliance with best practices.
-  \item Access to administrative features must be restricted to authenticated and authorized users only.
-  \item The system must comply with GDPR and relevant data protection regulations for user privacy.
-  \item Location-Based Services (LBS) data should be anonymized to prevent unauthorized tracking or misuse.
+  \item End-to-end encryption (TLS 1.3) for all communications.
+  \item Secure storage of user credentials and sensitive data (hashed and encrypted).
+  \item Admin access restricted to authorized users.
+  \item Compliance with GDPR and environmental data privacy regulations.
+  \item Outdoor location data anonymized to prevent misuse.
 \end{itemize}
 
 \subsection{Scalability and Extensibility}
-
 \begin{itemize}
-  \item The system architecture should be modular and scalable, capable of integrating new sensors, communication protocols, or analytics modules without major redesign.
-  \item The platform must support horizontal scalability, allowing the addition of new nodes or devices to the network dynamically.
-  \item APIs and microservices should be loosely coupled to facilitate integration with external platforms (e.g., smart buildings or environmental control systems).
+  \item Modular architecture for integration of new sensors, outdoor analytics modules, and communication protocols.
+  \item Horizontal scalability for city-wide sensor networks.
+  \item Loosely coupled APIs and microservices for integration with external platforms.
 \end{itemize}
 
 \subsection{Maintainability and Upgradability}
-
 \begin{itemize}
-  \item The system should allow remote updates (Over-the-Air firmware) for sensors and gateways.
-  \item The software should follow clean architecture principles to facilitate code maintenance and feature evolution.
-  \item Comprehensive logging and diagnostic mechanisms must be included to simplify troubleshooting and performance monitoring.
-  \item The platform should be documented with clear technical manuals and user guides for both administrators and end users.
+  \item OTA updates for sensors and gateways.
+  \item Clean architecture principles for maintainable code.
+  \item Comprehensive logging and diagnostics.
+  \item Detailed documentation for indoor and outdoor deployments.
 \end{itemize}
 
 \subsection{Usability and Accessibility}
-
 \begin{itemize}
-  \item The interface must be intuitive, responsive, and user-friendly, designed with accessibility standards (e.g., WCAG 2.1).
-  \item Users should be able to configure thresholds, alerts, and visualizations with minimal technical knowledge.
-  \item Mobile and desktop versions must provide consistent user experiences.
-  \item Use of color coding, icons, and graphs to simplify air quality interpretation.
-  \item Support for multi-language options to widen accessibility for international users.
+  \item Intuitive, responsive, and accessible interface (WCAG 2.1).
+  \item Easy configuration of thresholds, alerts, and visualizations.
+  \item Consistent mobile and desktop experiences.
+  \item Color coding, icons, graphs for clear interpretation.
+  \item Multi-language support.
 \end{itemize}
 
 \subsection{Interoperability}
-
 \begin{itemize}
-  \item AIR-AWARE must support standard IoT communication protocols (MQTT, CoAP, HTTP, LoRaWAN).
-  \item The system should be interoperable with third-party services (e.g., Google Cloud, AWS IoT, or municipal smart city platforms).
-  \item Data exports should be available in standard formats (JSON, CSV) for external analysis or reporting.
+  \item Support MQTT, CoAP, HTTP, LoRaWAN, LTE-M/NB-IoT.
+  \item Interoperable with third-party services and smart city platforms.
+  \item Data export in standard formats (JSON, CSV) for analysis or reporting.
 \end{itemize}
+
 \section{Machine Learning Integration}
 
-AIR-AWARE leverages machine learning (ML) techniques to enhance air quality monitoring, provide predictive insights, and trigger proactive alerts based on environmental conditions.
-\\
-The ML integration ensures that the system can learn from sensor data, adapt to changing environments, and deliver accurate predictions for potential air quality hazards.
+AIR-AWARE leverages ML to enhance indoor and outdoor air quality monitoring, provide predictive insights, and trigger proactive alerts.
 
 \subsection{Model Development}
-
-The objective of model development is to build an ML model capable of detecting air quality anomalies and predicting potential health risks.
-
-\textbf{Key features include:}
 \begin{itemize}
-  \item \textbf{Input variables:} CO$_{2}$ levels, VOC concentrations, particulate matter (PM$_{2.5}$ / PM$_{10}$), temperature, humidity, and location-based data.
-  \item \textbf{Predictive output:} Anomaly detection score or air quality index (AQI) indicating the likelihood of unsafe conditions.
-  \item \textbf{Algorithm choice:} Ensemble methods, regression models, or neural networks optimized for real-time inference.
-  \item \textbf{Training data:} Historical sensor readings, environmental data, and labeled events (e.g., detected air hazards).
+  \item Input variables: CO$_{2}$, VOCs, PM$_{2.5}$/PM$_{10}$, NO$_2$, O$_3$, SO$_2$, temperature, humidity, wind, traffic, GPS location.
+  \item Predictive output: anomaly detection score or AQI for indoor and outdoor zones.
+  \item Algorithm choice: ensemble methods, regression models, or neural networks optimized for real-time inference.
+  \item Training data: historical indoor/outdoor sensor readings, weather, traffic, labeled events.
 \end{itemize}
-
-The model continuously learns patterns from new sensor data, improving accuracy over time while minimizing false alarms.
 
 \subsection{MLOps Implementation}
-
-MLOps practices ensure that the ML model is robust, reliable, and continuously updated in production.
-
-\textbf{Key components of the MLOps framework include:}
 \begin{itemize}
-  \item \textbf{Automated Training and Deployment:} New sensor data is periodically used to retrain and redeploy models automatically.
-  \item \textbf{Continuous Monitoring:} Track model performance metrics (accuracy, recall, false positives) to detect drift and maintain prediction quality.
-  \item \textbf{Alerts and Notifications:} When the model detects potential air quality hazards, it triggers real-time alerts to users.
-  \item \textbf{Data Versioning and Management:} Sensor data and model versions are version-controlled for reproducibility and historical analysis.
-  \item \textbf{Security and Compliance:} Ensure secure handling of environmental and user data, maintaining privacy standards.
-  \item \textbf{Performance Optimization:} Hyperparameter tuning and resource management ensure efficient and accurate predictions.
-  \item \textbf{Feedback Loop:} User feedback is incorporated to refine predictions and improve the system’s relevance in different environments.
+  \item Automated retraining and deployment.
+  \item Continuous monitoring of model performance (accuracy, recall, false positives).
+  \item Real-time alert triggers for potential hazards.
+  \item Data versioning and management.
+  \item Security and compliance for user and environmental data.
+  \item Performance optimization with hyperparameter tuning.
+  \item Feedback loop incorporating user and environmental feedback.
 \end{itemize}
-\\
-The MLOps implementation is critical for sustaining reliable, high-quality predictions, adapting to environmental changes, and continuously improving user safety.
+
 \section{Equipment}
 
 To ensure precise air quality monitoring and real-time alerting, the following components will be used in AIR-AWARE:
@@ -400,6 +370,7 @@ High-quality wiring to ensure stable communication between sensors and the Raspb
 Reliable power adapters and protective enclosures to maintain system stability and durability, ensuring continuous operation in different environments.
 
 These components collectively form the core hardware infrastructure of AIR-AWARE, enabling precise environmental monitoring, seamless IoT integration, and accurate real-time data analysis.
+
 \section{Technologies Choice}
 
 \subsection{Back-end}
@@ -445,30 +416,32 @@ These components collectively form the core hardware infrastructure of AIR-AWARE
 \end{figure}
 The diagram above describes the main architecture of the Aire-Aware monitoring system which
 is mainly composed by Backend, Middleware and Frontend.
+
 \section{Timeline and Tasks (8 Weeks)}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.7\textwidth]{planning.png} % Replace with your image filename
+    \includegraphics[width=0.7\textwidth]{planning.png}
     \caption{Timeline and Tasks}
     \label{fig:roc_curve}
 \end{figure}
+
 \begin{tabular}{|c|p{14cm}|}
 \hline
 \textbf{Week} & \textbf{Tasks} \\
 \hline
 1 & Project kickoff, requirement analysis, and defining user stories. Research existing air quality monitoring systems and finalize hardware and software components. \\
 \hline
-2 & Sensor setup and initial IoT network configuration (ESP32/Raspberry Pi). Start backend setup (MongoDB \& MQTT broker). \\
+2 & Sensor setup and initial IoT network configuration (ESP32/Raspberry Pi). Outdoor sensor tests and housing selection. Backend setup (MongoDB \& MQTT broker). \\
 \hline
-3 & Develop middleware services using JAX-RS and integrate MQTT communication. Begin basic front-end PWA setup. \\
+3 & Develop middleware services using JAX-RS and integrate MQTT communication. Begin basic front-end PWA setup with indoor and outdoor mapping. \\
 \hline
-4 & Implement data collection from sensors, real-time monitoring, and storage. Develop initial alert notification system. \\
+4 & Implement data collection from sensors, real-time monitoring, and storage. Develop initial alert notification system. Outdoor deployment tests. \\
 \hline
 5 & Machine learning model development for air quality prediction. Begin MLOps setup including CI/CD pipeline, testing, and monitoring tools. \\
 \hline
-6 & Integrate ML model with backend and front-end dashboards. Implement Location-Based Services (LBS) for alerts. \\
+6 & Integrate ML model with backend and front-end dashboards. Implement Location-Based Services (LBS) and GPS for outdoor alerts. \\
 \hline
-7 & System testing: sensor accuracy, real-time alerts, dashboard functionality, and ML predictions. Debug and optimize system performance. \\
+7 & System testing: sensor accuracy, real-time alerts, dashboard functionality, and ML predictions. Outdoor environmental testing. Debug and optimize system performance. \\
 \hline
 8 & Finalize documentation, create prototype demonstration, and prepare presentation/video of the AIR-AWARE system. Deliverables submission. \\
 \hline
@@ -542,17 +515,16 @@ The marketing strategy for AIR-AWARE focuses on positioning it as a reliable, hi
   \item Accessible via web, iOS, and Android apps, providing users with convenient access to air quality data and alerts from anywhere.
 \end{itemize}
 \section{Limitations}
-
-While AIR-AWARE aims to provide accurate and real-time air quality monitoring, several limitations should be considered:
-
 \begin{itemize}
-  \item \textbf{Internet Connectivity Dependence:} The system relies on internet connectivity for real-time monitoring and alerts. Outages may prevent timely notifications.
-  \item \textbf{Sensor Accuracy:} Environmental sensors may occasionally produce false readings due to calibration errors, interference, or extreme conditions, potentially triggering unnecessary alerts.
-  \item \textbf{Device Placement:} The precision of air quality detection depends on optimal placement of sensors. Incorrect placement may lead to inaccurate readings or missed hazardous events.
-  \item \textbf{Data Volume and Processing:} Managing and analyzing large volumes of sensor data in real time can be challenging, requiring efficient data processing pipelines to maintain system performance.
-  \item \textbf{Environmental Interference:} Factors such as dust, humidity, and temperature fluctuations may affect sensor readings, which could influence the reliability of alerts.
-  \item \textbf{User Response Dependency:} While automated alerts are sent, user action may still be necessary for mitigating risks, and delays in response can impact effectiveness.
+  \item Internet connectivity dependence.
+  \item Sensor accuracy affected by extreme outdoor conditions.
+  \item Device placement critical for accuracy.
+  \item High data volume management.
+  \item Environmental interference (dust, humidity, temperature, wind).
+  \item User response dependency.
+  \item Outdoor risk of vandalism or theft.
 \end{itemize}
+
 \section{Deliverables}
 
 The AIR-AWARE project will produce the following key outputs:
