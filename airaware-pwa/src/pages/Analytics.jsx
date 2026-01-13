@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
     TrendingUp,
@@ -18,12 +18,15 @@ import { calculateAQI, formatNumber, getHealthRecommendation } from '../utils/he
 import { TimeSeriesChart, MultiMetricChart, ChartCard } from '../components/Charts/TimeSeriesChart';
 
 /**
- * Analytics Page - WITH REAL API AND MLOPS INTEGRATION
+ * Analytics Page - FIXED VERSION
+ * - Sensor selection now filters data
+ * - Time range now filters by date
+ * - ML prediction uses selected sensor's data
  */
 export default function AnalyticsPage() {
     const { sensors, setSensors } = useSensors();
-    const [historicalData, setHistoricalData] = useState([]);
-    const [selectedSensor, setSelectedSensor] = useState(null);
+    const [allReadings, setAllReadings] = useState([]); // Store ALL readings
+    const [selectedSensorId, setSelectedSensorId] = useState(''); // Store sensor ID string
     const [timeRange, setTimeRange] = useState('24h');
     const [selectedMetric, setSelectedMetric] = useState('pm25');
     const [isLoading, setIsLoading] = useState(true);
@@ -36,10 +39,68 @@ export default function AnalyticsPage() {
     const [mlHealth, setMlHealth] = useState(null);
     const [mlError, setMlError] = useState(null);
 
-    // Load data
+    // Load data on mount
     useEffect(() => {
         loadData();
-    }, [timeRange]);
+    }, []);
+
+    // ✅ FIX: Filter data when sensor or time range changes
+    const filteredData = useMemo(() => {
+        let data = [...allReadings];
+
+        // Filter by selected sensor
+        if (selectedSensorId) {
+            data = data.filter(r =>
+                (r.sensorId || r.sensor_id) === selectedSensorId
+            );
+        }
+
+        // Filter by time range
+        const now = new Date();
+        let cutoffDate = new Date();
+
+        switch (timeRange) {
+            case '24h':
+                cutoffDate.setHours(now.getHours() - 24);
+                break;
+            case '7d':
+                cutoffDate.setDate(now.getDate() - 7);
+                break;
+            case '30d':
+                cutoffDate.setDate(now.getDate() - 30);
+                break;
+            default:
+                cutoffDate.setHours(now.getHours() - 24);
+        }
+
+        data = data.filter(r => {
+            if (!r.timestamp) return true;
+            const readingDate = new Date(
+                typeof r.timestamp === 'number'
+                    ? (r.timestamp < 1e12 ? r.timestamp * 1000 : r.timestamp)
+                    : r.timestamp
+            );
+            return readingDate >= cutoffDate;
+        });
+
+        // Sort by timestamp (oldest first for charts)
+        data.sort((a, b) => {
+            const dateA = new Date(a.timestamp);
+            const dateB = new Date(b.timestamp);
+            return dateA - dateB;
+        });
+
+        return data;
+    }, [allReadings, selectedSensorId, timeRange]);
+
+    // ✅ FIX: Update ML predictions when sensor changes
+    useEffect(() => {
+        if (filteredData.length > 0 && !useMockData) {
+            // Get the most recent reading for selected sensor
+            const latestReading = filteredData[filteredData.length - 1];
+            fetchMLPredictions(latestReading);
+        }
+    }, [selectedSensorId, filteredData.length]);
 
     const loadData = async () => {
         setIsLoading(true);
@@ -57,10 +118,10 @@ export default function AnalyticsPage() {
                 console.warn('[Analytics] Failed to fetch sensors:', e.message);
             }
 
-            // Fetch readings
+            // Fetch ALL readings (we'll filter client-side)
             let readingsData = [];
             try {
-                readingsData = await readingsAPI.getLatest(200);
+                readingsData = await readingsAPI.getLatest(500); // Get more readings
                 console.log('[Analytics] Loaded:', readingsData.length, 'readings');
             } catch (e) {
                 console.warn('[Analytics] Failed to fetch readings:', e.message);
@@ -72,21 +133,13 @@ export default function AnalyticsPage() {
                 console.log('[Analytics] ✅ Using REAL DATA');
                 setUseMockData(false);
                 setSensors(sensorsData);
-
-                // Sort readings by timestamp (oldest first for charts)
-                const sortedReadings = readingsData.sort((a, b) =>
-                    new Date(a.timestamp) - new Date(b.timestamp)
-                );
-
-                setHistoricalData(sortedReadings);
+                setAllReadings(readingsData);
 
                 // Set default selected sensor
-                if (!selectedSensor && sensorsData.length > 0) {
-                    setSelectedSensor(sensorsData[0]);
+                if (!selectedSensorId && sensorsData.length > 0) {
+                    const firstSensorId = sensorsData[0].deviceId || sensorsData[0].sensorId;
+                    setSelectedSensorId(firstSensorId);
                 }
-
-                // Fetch ML predictions for latest reading
-                await fetchMLPredictions(readingsData[0]);
 
             } else {
                 // Fall back to mock data
@@ -96,10 +149,10 @@ export default function AnalyticsPage() {
 
                 const hours = timeRange === '24h' ? 24 : timeRange === '7d' ? 168 : 720;
                 const history = mockData.generateReadingsHistory('SENSOR_TUNIS_001', hours);
-                setHistoricalData(history);
+                setAllReadings(history);
 
-                if (!selectedSensor && mockData.sensors.length > 0) {
-                    setSelectedSensor(mockData.sensors[0]);
+                if (!selectedSensorId && mockData.sensors.length > 0) {
+                    setSelectedSensorId(mockData.sensors[0].deviceId);
                 }
             }
         } catch (err) {
@@ -109,7 +162,7 @@ export default function AnalyticsPage() {
             setSensors(mockData.sensors);
 
             const hours = timeRange === '24h' ? 24 : timeRange === '7d' ? 168 : 720;
-            setHistoricalData(mockData.generateReadingsHistory('SENSOR_TUNIS_001', hours));
+            setAllReadings(mockData.generateReadingsHistory('SENSOR_TUNIS_001', hours));
         } finally {
             setIsLoading(false);
         }
@@ -128,7 +181,6 @@ export default function AnalyticsPage() {
             console.log('[Analytics] ML Service Health:', health);
 
             // Format the reading data to match MLOps API schema exactly
-            // Handle different field name formats from MongoDB
             const formattedReading = {
                 sensorId: String(reading.sensorId || reading.sensor_id || reading.deviceId || 'UNKNOWN'),
                 temperature: parseFloat(reading.temperature) || 25.0,
@@ -161,13 +213,13 @@ export default function AnalyticsPage() {
         setIsRefreshing(false);
     };
 
-    // Calculate statistics
-    const stats = React.useMemo(() => {
-        if (!historicalData.length) return null;
+    // ✅ FIX: Calculate statistics based on FILTERED data
+    const stats = useMemo(() => {
+        if (!filteredData.length) return null;
 
-        const pm25Values = historicalData.map(r => r.pm25).filter(v => v != null);
-        const tempValues = historicalData.map(r => r.temperature).filter(v => v != null);
-        const co2Values = historicalData.map(r => r.co2).filter(v => v != null);
+        const pm25Values = filteredData.map(r => r.pm25).filter(v => v != null);
+        const tempValues = filteredData.map(r => r.temperature).filter(v => v != null);
+        const co2Values = filteredData.map(r => r.co2).filter(v => v != null);
 
         const avg = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
         const min = (arr) => arr.length ? Math.min(...arr) : 0;
@@ -177,18 +229,24 @@ export default function AnalyticsPage() {
             pm25: { avg: avg(pm25Values), min: min(pm25Values), max: max(pm25Values) },
             temperature: { avg: avg(tempValues), min: min(tempValues), max: max(tempValues) },
             co2: { avg: avg(co2Values), min: min(co2Values), max: max(co2Values) },
+            count: filteredData.length,
         };
-    }, [historicalData]);
+    }, [filteredData]);
 
-    // Calculate trend
-    const trend = React.useMemo(() => {
-        if (historicalData.length < 12) return 0;
-        const recent = historicalData.slice(-6);
-        const older = historicalData.slice(0, 6);
+    // Calculate trend based on filtered data
+    const trend = useMemo(() => {
+        if (filteredData.length < 12) return 0;
+        const recent = filteredData.slice(-6);
+        const older = filteredData.slice(0, 6);
         const recentAvg = recent.reduce((a, b) => a + (b.pm25 || 0), 0) / recent.length;
         const olderAvg = older.reduce((a, b) => a + (b.pm25 || 0), 0) / older.length;
         return olderAvg ? ((recentAvg - olderAvg) / olderAvg) * 100 : 0;
-    }, [historicalData]);
+    }, [filteredData]);
+
+    // Get selected sensor object
+    const selectedSensor = useMemo(() => {
+        return sensors.find(s => (s.deviceId || s.sensorId) === selectedSensorId);
+    }, [sensors, selectedSensorId]);
 
     // Loading state
     if (isLoading) {
@@ -254,14 +312,12 @@ export default function AnalyticsPage() {
                         <option value="30d">Last 30 Days</option>
                     </select>
 
-                    {/* Sensor Select */}
+                    {/* Sensor Select - ✅ FIXED */}
                     <select
-                        value={selectedSensor?.deviceId || selectedSensor?.sensorId || ''}
+                        value={selectedSensorId}
                         onChange={(e) => {
-                            const sensor = sensors.find(s =>
-                                (s.deviceId || s.sensorId) === e.target.value
-                            );
-                            setSelectedSensor(sensor);
+                            console.log('[Analytics] Sensor changed to:', e.target.value);
+                            setSelectedSensorId(e.target.value);
                         }}
                         className="input"
                     >
@@ -284,90 +340,70 @@ export default function AnalyticsPage() {
             </div>
 
             {/* ML Predictions Card */}
-            {mlPredictions && (
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="glass-card p-5 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 border-violet-200 dark:border-violet-800"
-                >
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
-                            <Brain className="w-5 h-5 text-violet-600" />
-                        </div>
-                        <div>
-                            <h3 className="font-semibold text-slate-900 dark:text-white">
-                                AI Prediction
-                            </h3>
-                            <p className="text-sm text-slate-500">
-                                Machine Learning analysis from MLOps module
-                            </p>
-                        </div>
+            <div className="glass-card p-6 bg-gradient-to-r from-violet-500/10 to-purple-500/10 border-violet-200 dark:border-violet-800">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+                        <Brain className="w-5 h-5 text-violet-600" />
                     </div>
+                    <div>
+                        <h2 className="font-semibold text-slate-900 dark:text-white">AI Prediction</h2>
+                        <p className="text-sm text-slate-500">
+                            Machine Learning analysis for {selectedSensorId || 'selected sensor'}
+                        </p>
+                    </div>
+                    {mlHealth && (
+                        <span className="ml-auto text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            ML Service Online
+                        </span>
+                    )}
+                </div>
 
+                {mlError ? (
+                    <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                        <AlertCircle className="w-4 h-4" />
+                        <span className="text-sm">ML prediction unavailable: {mlError}</span>
+                    </div>
+                ) : mlPredictions ? (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-white/60 dark:bg-slate-800/60 rounded-xl p-4">
+                        <div>
                             <p className="text-sm text-slate-500">Predicted AQI</p>
-                            <p className="text-2xl font-bold" style={{ color: calculateAQI(mlPredictions.predicted_aqi || 0).color }}>
+                            <p className="text-2xl font-bold text-violet-600">
                                 {formatNumber(mlPredictions.predicted_aqi, 0)}
                             </p>
                         </div>
-
-                        <div className="bg-white/60 dark:bg-slate-800/60 rounded-xl p-4">
+                        <div>
                             <p className="text-sm text-slate-500">Anomaly Score</p>
-                            <p className={`text-2xl font-bold ${mlPredictions.is_anomaly ? 'text-red-600' : 'text-green-600'}`}>
+                            <p className="text-2xl font-bold text-green-600">
                                 {formatNumber(mlPredictions.anomaly_score * 100, 0)}%
                             </p>
                         </div>
-
-                        <div className="bg-white/60 dark:bg-slate-800/60 rounded-xl p-4">
+                        <div>
                             <p className="text-sm text-slate-500">Risk Level</p>
                             <p className={`text-2xl font-bold ${
                                 mlPredictions.risk_level === 'LOW' ? 'text-green-600' :
-                                    mlPredictions.risk_level === 'MODERATE' ? 'text-yellow-600' :
-                                        mlPredictions.risk_level === 'HIGH' ? 'text-orange-600' : 'text-red-600'
+                                    mlPredictions.risk_level === 'MEDIUM' ? 'text-yellow-600' :
+                                        mlPredictions.risk_level === 'HIGH' ? 'text-orange-600' :
+                                            'text-red-600'
                             }`}>
                                 {mlPredictions.risk_level}
                             </p>
                         </div>
-
-                        <div className="bg-white/60 dark:bg-slate-800/60 rounded-xl p-4">
-                            <p className="text-sm text-slate-500">Status</p>
-                            <div className="flex items-center gap-2">
-                                {mlPredictions.is_anomaly ? (
-                                    <>
-                                        <AlertCircle className="w-5 h-5 text-red-600" />
-                                        <span className="text-lg font-bold text-red-600">Anomaly</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Activity className="w-5 h-5 text-green-600" />
-                                        <span className="text-lg font-bold text-green-600">Normal</span>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </motion.div>
-            )}
-
-            {/* ML Error Message */}
-            {mlError && !mlPredictions && (
-                <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-xl p-4">
-                    <div className="flex items-center gap-3">
-                        <Brain className="w-5 h-5 text-violet-600" />
                         <div>
-                            <p className="font-medium text-violet-800 dark:text-violet-200">
-                                ML Predictions Unavailable
-                            </p>
-                            <p className="text-sm text-violet-600 dark:text-violet-400">
-                                Start the MLOps server: <code className="bg-violet-100 dark:bg-violet-900 px-2 py-0.5 rounded">python -m serving.model_server</code>
+                            <p className="text-sm text-slate-500">Status</p>
+                            <p className={`text-2xl font-bold flex items-center gap-2 ${
+                                mlPredictions.is_anomaly ? 'text-red-600' : 'text-green-600'
+                            }`}>
+                                <Activity className="w-5 h-5" />
+                                {mlPredictions.is_anomaly ? 'Anomaly' : 'Normal'}
                             </p>
                         </div>
                     </div>
-                </div>
-            )}
+                ) : (
+                    <div className="text-sm text-slate-500">Loading predictions...</div>
+                )}
+            </div>
 
-            {/* Stats Overview */}
+            {/* Stats Cards - ✅ NOW USES FILTERED DATA */}
             {stats && (
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="glass-card p-5">
@@ -377,7 +413,7 @@ export default function AnalyticsPage() {
                                 <p className="text-3xl font-display font-bold text-slate-900 dark:text-white">
                                     {formatNumber(stats.pm25.avg)}
                                 </p>
-                                <p className="text-xs text-slate-400">µg/m³</p>
+                                <p className="text-xs text-slate-400">µg/m³ ({stats.count} readings)</p>
                             </div>
                             <div
                                 className={`
@@ -424,24 +460,41 @@ export default function AnalyticsPage() {
                 </div>
             )}
 
-            {/* Main Chart */}
-            <ChartCard
-                title="Air Quality Over Time"
-                subtitle={`${selectedSensor?.deviceId || selectedSensor?.sensorId || 'All Sensors'} - ${
-                    timeRange === '24h' ? 'Last 24 Hours' :
-                        timeRange === '7d' ? 'Last 7 Days' : 'Last 30 Days'
-                }`}
-            >
-                <TimeSeriesChart
-                    data={historicalData}
-                    metrics={['pm25', 'pm10']}
-                    height={300}
-                    showLegend={true}
-                />
-            </ChartCard>
+            {/* No Data Message */}
+            {filteredData.length === 0 && (
+                <div className="glass-card p-8 text-center">
+                    <Activity className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                        No Data Available
+                    </h3>
+                    <p className="text-slate-500">
+                        No readings found for {selectedSensorId} in the {timeRange === '24h' ? 'last 24 hours' : timeRange === '7d' ? 'last 7 days' : 'last 30 days'}.
+                    </p>
+                </div>
+            )}
 
-            {/* Multi-metric Charts */}
-            <MultiMetricChart data={historicalData} height={300} />
+            {/* Main Chart - ✅ NOW USES FILTERED DATA */}
+            {filteredData.length > 0 && (
+                <>
+                    <ChartCard
+                        title="Air Quality Over Time"
+                        subtitle={`${selectedSensorId || 'All Sensors'} - ${
+                            timeRange === '24h' ? 'Last 24 Hours' :
+                                timeRange === '7d' ? 'Last 7 Days' : 'Last 30 Days'
+                        } (${filteredData.length} readings)`}
+                    >
+                        <TimeSeriesChart
+                            data={filteredData}
+                            metrics={['pm25', 'pm10']}
+                            height={300}
+                            showLegend={true}
+                        />
+                    </ChartCard>
+
+                    {/* Multi-metric Charts */}
+                    <MultiMetricChart data={filteredData} height={300} />
+                </>
+            )}
 
             {/* Metric Selection Cards */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

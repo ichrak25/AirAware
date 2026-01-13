@@ -18,8 +18,11 @@ import jakarta.mail.*;
 import jakarta.mail.internet.*;
 
 /**
- * Service for sending notifications (Email, SMS, Webhook)
+ * Service for sending notifications (Email, SMS, Webhook, Web Push)
  * Supports multiple notification channels for critical alerts
+ * 
+ * Web Push notifications work even when the app is closed on both
+ * desktop (PC) and mobile devices.
  *
  * Configuration is loaded from NotificationConfig which reads environment variables.
  */
@@ -30,6 +33,12 @@ public class NotificationService {
 
     @Inject
     private NotificationConfig config;
+
+    @Inject
+    private UserEmailService userEmailService;
+
+    @Inject
+    private WebPushService webPushService;
 
     // ==================== MAIN NOTIFICATION METHOD ====================
 
@@ -43,6 +52,15 @@ public class NotificationService {
         // Send notifications asynchronously
         CompletableFuture.runAsync(() -> {
             try {
+                // 🔔 Web Push notifications (works even when app is closed!)
+                // This is sent to all subscribed browsers/devices
+                try {
+                    LOGGER.info("📱 Sending Web Push notifications...");
+                    webPushService.sendPushToAll(alert);
+                } catch (Exception e) {
+                    LOGGER.warning("Web Push notification failed: " + e.getMessage());
+                }
+
                 // Email notification
                 if (config.isEmailEnabled()) {
                     sendEmailNotification(alert);
@@ -75,45 +93,161 @@ public class NotificationService {
     }
 
     // ==================== EMAIL NOTIFICATION ====================
+    
+    // Reusable SMTP session (created once, reused for all emails)
+    private Session smtpSession = null;
+    private Transport smtpTransport = null;
+    private long lastSmtpConnectionTime = 0;
+    private static final long SMTP_CONNECTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
     private void sendEmailNotification(Alert alert) {
         try {
+            // Collect all recipients: configured recipients + all users from database
+            List<String> allRecipients = new java.util.ArrayList<>();
+            
+            // Add configured recipients (admin emails from env vars)
+            List<String> configuredRecipients = config.getEmailRecipients();
+            if (configuredRecipients != null && !configuredRecipients.isEmpty()) {
+                allRecipients.addAll(configuredRecipients);
+            }
+            
+            // Add all registered users from IAM database
+            if (userEmailService != null && userEmailService.isConnected()) {
+                List<String> userEmails = userEmailService.getAllUserEmails();
+                for (String email : userEmails) {
+                    if (!allRecipients.contains(email)) {
+                        allRecipients.add(email);
+                    }
+                }
+                LOGGER.info("📧 Added " + userEmails.size() + " user emails from database");
+            }
+
+            if (allRecipients.isEmpty()) {
+                LOGGER.warning("⚠️ No email recipients configured or found in database");
+                return;
+            }
+
+            // Get or create SMTP session
+            Session session = getOrCreateSmtpSession();
+            
+            // Create email with BCC to all recipients (single email, single login)
+            String subject = getEmailSubject(alert);
+            String htmlBody = createEmailBody(alert);
+            
+            try {
+                Message message = new MimeMessage(session);
+                message.setFrom(new InternetAddress(config.getSmtpUsername(), "AirAware Alerts"));
+                
+                // Use BCC for all recipients (privacy + single email)
+                InternetAddress[] bccAddresses = allRecipients.stream()
+                        .map(email -> {
+                            try {
+                                return new InternetAddress(email.trim());
+                            } catch (Exception e) {
+                                LOGGER.warning("Invalid email address: " + email);
+                                return null;
+                            }
+                        })
+                        .filter(addr -> addr != null)
+                        .toArray(InternetAddress[]::new);
+                
+                if (bccAddresses.length == 0) {
+                    LOGGER.warning("⚠️ No valid email addresses found");
+                    return;
+                }
+                
+                // Set first recipient as TO (required), rest as BCC
+                message.addRecipient(Message.RecipientType.TO, bccAddresses[0]);
+                if (bccAddresses.length > 1) {
+                    InternetAddress[] bccOnly = java.util.Arrays.copyOfRange(bccAddresses, 1, bccAddresses.length);
+                    message.addRecipients(Message.RecipientType.BCC, bccOnly);
+                }
+                
+                message.setSubject(subject);
+                message.setContent(htmlBody, "text/html; charset=utf-8");
+                
+                // Send using reusable transport
+                sendWithReusableTransport(session, message);
+                
+                LOGGER.info("📨 Email notification sent to " + allRecipients.size() + " recipients (single email with BCC)");
+                
+            } catch (Exception e) {
+                LOGGER.warning("❌ Failed to send email: " + e.getMessage());
+                // Reset connection on failure so next attempt creates fresh connection
+                closeSmtpConnection();
+            }
+
+        } catch (Exception e) {
+            LOGGER.warning("❌ Failed to send email notifications: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Get or create a reusable SMTP session (avoids multiple login attempts)
+     */
+    private synchronized Session getOrCreateSmtpSession() {
+        if (smtpSession == null) {
             Properties props = new Properties();
             props.put("mail.smtp.auth", String.valueOf(config.isSmtpAuthEnabled()));
             props.put("mail.smtp.starttls.enable", String.valueOf(config.isSmtpStartTlsEnabled()));
             props.put("mail.smtp.host", config.getSmtpHost());
             props.put("mail.smtp.port", String.valueOf(config.getSmtpPort()));
+            // Connection pooling settings
+            props.put("mail.smtp.connectiontimeout", "10000");
+            props.put("mail.smtp.timeout", "10000");
 
-            Session session = Session.getInstance(props, new Authenticator() {
+            smtpSession = Session.getInstance(props, new Authenticator() {
                 @Override
                 protected PasswordAuthentication getPasswordAuthentication() {
                     return new PasswordAuthentication(config.getSmtpUsername(), config.getSmtpPassword());
                 }
             });
-
-            Message message = new MimeMessage(session);
-            message.setFrom(new InternetAddress(config.getSmtpUsername(), "AirAware Alerts"));
-
-            // Add all recipients
-            List<String> recipients = config.getEmailRecipients();
-            for (String recipient : recipients) {
-                message.addRecipient(Message.RecipientType.TO, new InternetAddress(recipient.trim()));
-            }
-
-            // Set subject based on severity
-            String subject = getEmailSubject(alert);
-            message.setSubject(subject);
-
-            // Create HTML email body
-            String htmlBody = createEmailBody(alert);
-            message.setContent(htmlBody, "text/html; charset=utf-8");
-
-            Transport.send(message);
-            LOGGER.info("✅ Email notification sent successfully");
-
-        } catch (Exception e) {
-            LOGGER.warning("❌ Failed to send email notification: " + e.getMessage());
+            
+            LOGGER.info("📧 Created new SMTP session");
         }
+        return smtpSession;
+    }
+    
+    /**
+     * Send message using reusable transport connection
+     */
+    private synchronized void sendWithReusableTransport(Session session, Message message) throws MessagingException {
+        long now = System.currentTimeMillis();
+        
+        // Check if we need to create or reconnect transport
+        if (smtpTransport == null || !smtpTransport.isConnected() || 
+            (now - lastSmtpConnectionTime) > SMTP_CONNECTION_TIMEOUT_MS) {
+            
+            // Close old connection if exists
+            if (smtpTransport != null) {
+                try {
+                    smtpTransport.close();
+                } catch (Exception ignored) {}
+            }
+            
+            // Create new connection
+            smtpTransport = session.getTransport("smtp");
+            smtpTransport.connect(config.getSmtpHost(), config.getSmtpUsername(), config.getSmtpPassword());
+            lastSmtpConnectionTime = now;
+            LOGGER.info("📧 Connected to SMTP server");
+        }
+        
+        // Send using existing connection
+        smtpTransport.sendMessage(message, message.getAllRecipients());
+    }
+    
+    /**
+     * Close SMTP connection (called on errors or shutdown)
+     */
+    private synchronized void closeSmtpConnection() {
+        if (smtpTransport != null) {
+            try {
+                smtpTransport.close();
+            } catch (Exception ignored) {}
+            smtpTransport = null;
+        }
+        smtpSession = null;
+        LOGGER.info("📧 SMTP connection closed");
     }
 
     private String getEmailSubject(Alert alert) {

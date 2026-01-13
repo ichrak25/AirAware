@@ -32,6 +32,9 @@ public class ReadingService {
     @ApiDatabase
     private MongoDatabase database;
 
+    @Inject
+    private AlertThresholdService alertThresholdService;
+
     private MongoCollection<Document> collection() {
         return database.getCollection("readings");
     }
@@ -64,6 +67,14 @@ public class ReadingService {
         }
 
         collection().replaceOne(Filters.eq("_id", reading.getId()), doc, new ReplaceOptions().upsert(true));
+        
+        // Check thresholds and create alerts if needed (this will also send notifications)
+        try {
+            LOGGER.info("🔍 Checking thresholds for reading from sensor: " + reading.getSensorId());
+            alertThresholdService.checkThresholdsAndGenerateAlerts(reading);
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Failed to check thresholds for reading: " + e.getMessage(), e);
+        }
     }
 
     /** Find a reading by ID */

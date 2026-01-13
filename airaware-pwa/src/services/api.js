@@ -98,7 +98,10 @@ export const alertsAPI = {
     getUnresolved: () => fetchAPI(`${API_BASE}/alerts/unresolved`),
     getBySeverity: (severity) => fetchAPI(`${API_BASE}/alerts/severity/${severity}`),
     getBySensor: (sensorId) => fetchAPI(`${API_BASE}/alerts/sensor/${sensorId}`),
-    resolve: (id) => fetchAPI(`${API_BASE}/alerts/${id}/resolve`, { method: 'PUT' }),
+    resolve: (id, notes = null) => fetchAPI(`${API_BASE}/alerts/${id}/resolve`, { 
+        method: 'PUT',
+        body: JSON.stringify({ notes }),
+    }),
     delete: (id) => fetchAPI(`${API_BASE}/alerts/${id}`, { method: 'DELETE' }),
 };
 

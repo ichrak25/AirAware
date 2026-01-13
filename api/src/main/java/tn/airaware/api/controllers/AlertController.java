@@ -5,6 +5,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import tn.airaware.api.entities.Alert;
+import tn.airaware.api.entities.Reading;
 import tn.airaware.api.services.AlertService;
 
 import java.util.List;
@@ -178,12 +179,17 @@ public class AlertController {
     }
 
     /**
-     * Mark an alert as resolved
+     * Mark an alert as resolved with optional resolution notes
      * PUT /api/alerts/{id}/resolve
+     * 
+     * Request body (optional):
+     * {
+     *   "notes": "Fixed ventilation system"
+     * }
      */
     @PUT
     @Path("/{id}/resolve")
-    public Response resolveAlert(@PathParam("id") String id) {
+    public Response resolveAlert(@PathParam("id") String id, ResolveRequest request) {
         try {
             if (id == null || id.isEmpty()) {
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -199,15 +205,17 @@ public class AlertController {
                         .build();
             }
 
-            alertService.resolveAlert(id);
-            LOGGER.info("Alert resolved successfully: " + id);
+            // Get resolution notes from request (if provided)
+            String resolutionNotes = (request != null) ? request.notes : null;
+            
+            alertService.resolveAlert(id, resolutionNotes);
+            LOGGER.info("Alert resolved successfully: " + id + 
+                    (resolutionNotes != null ? " with notes: " + resolutionNotes : ""));
 
             // Fetch updated alert
             Alert updatedAlert = alertService.findById(id);
 
-            return Response.ok(updatedAlert)
-                    .entity(new SuccessResponse("Alert resolved successfully"))
-                    .build();
+            return Response.ok(updatedAlert).build();
 
         } catch (Exception e) {
             LOGGER.severe("Error resolving alert: " + e.getMessage());
@@ -215,6 +223,13 @@ public class AlertController {
                     .entity(new ErrorResponse("Failed to resolve alert: " + e.getMessage()))
                     .build();
         }
+    }
+
+    /**
+     * Request DTO for resolving alerts with notes
+     */
+    public static class ResolveRequest {
+        public String notes;
     }
 
     /**
@@ -293,6 +308,52 @@ public class AlertController {
             LOGGER.severe("Error deleting alert: " + e.getMessage());
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to delete alert: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
+     * Test endpoint - Create a test alert to verify notifications
+     * GET /api/alerts/test
+     */
+    @GET
+    @Path("/test")
+    public Response createTestAlert() {
+        try {
+            LOGGER.info("🧪 Creating TEST alert to verify notification system...");
+            
+            // Create a test reading
+            Reading testReading = new Reading();
+            testReading.setSensorId("TEST_SENSOR");
+            testReading.setTemperature(24.0);
+            testReading.setHumidity(58.0);
+            testReading.setCo2(2500.0); // High CO2 to trigger alert
+            testReading.setPm25(52.0);
+            testReading.setVoc(0.35);
+            testReading.setTimestamp(java.time.Instant.now());
+            
+            // Create test alert
+            Alert testAlert = new Alert();
+            testAlert.setType("TEST_ALERT");
+            testAlert.setSeverity("WARNING");
+            testAlert.setMessage("🧪 TEST: This is a test alert to verify the notification system is working!");
+            testAlert.setSensorId("TEST_SENSOR");
+            testAlert.setReading(testReading);
+            
+            // Save alert (this will trigger notifications)
+            alertService.saveAlert(testAlert);
+            
+            LOGGER.info("✅ Test alert created with ID: " + testAlert.getId());
+            
+            return Response.ok()
+                    .entity(new SuccessResponse("Test alert created! Check your email. Alert ID: " + testAlert.getId()))
+                    .build();
+                    
+        } catch (Exception e) {
+            LOGGER.severe("❌ Error creating test alert: " + e.getMessage());
+            e.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorResponse("Failed to create test alert: " + e.getMessage()))
                     .build();
         }
     }

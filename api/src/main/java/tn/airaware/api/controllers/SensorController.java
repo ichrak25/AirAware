@@ -8,6 +8,7 @@ import tn.airaware.api.entities.Sensor;
 import tn.airaware.api.services.ReadingService;
 import tn.airaware.api.services.SensorService;
 import tn.airaware.api.entities.Reading;
+import tn.airaware.api.mqtt.MqttPublisherService;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -31,6 +32,9 @@ public class SensorController {
 
     @Inject
     private ReadingService readingService;
+
+    @Inject
+    private MqttPublisherService mqttPublisherService;
 
     /**
      * Register a new sensor
@@ -65,6 +69,15 @@ public class SensorController {
 
             sensorService.registerSensor(sensor);
             LOGGER.info("Sensor registered successfully: " + sensor.getDeviceId());
+
+            // Notify IoT devices about the new sensor via MQTT
+            try {
+                mqttPublisherService.notifySensorRegistered(sensor);
+                LOGGER.info("MQTT notification sent for new sensor: " + sensor.getDeviceId());
+            } catch (Exception mqttEx) {
+                // Log but don't fail the registration if MQTT notification fails
+                LOGGER.warning("Failed to send MQTT notification for sensor: " + mqttEx.getMessage());
+            }
 
             return Response.status(Response.Status.CREATED)
                     .entity(sensor)
@@ -330,6 +343,14 @@ public class SensorController {
             sensorService.registerSensor(sensor);
             LOGGER.info("Sensor updated successfully: " + id);
 
+            // Notify IoT devices about the sensor update via MQTT
+            try {
+                mqttPublisherService.notifySensorUpdated(sensor);
+                LOGGER.info("MQTT notification sent for sensor update: " + id);
+            } catch (Exception mqttEx) {
+                LOGGER.warning("Failed to send MQTT notification for sensor update: " + mqttEx.getMessage());
+            }
+
             return Response.ok(sensor).build();
 
         } catch (Exception e) {
@@ -378,6 +399,14 @@ public class SensorController {
             sensorService.registerSensor(sensor);
             LOGGER.info("Sensor status updated to " + request.status + " for sensor: " + id);
 
+            // Notify IoT devices about the status change via MQTT
+            try {
+                mqttPublisherService.notifySensorUpdated(sensor);
+                LOGGER.info("MQTT notification sent for sensor status update: " + id);
+            } catch (Exception mqttEx) {
+                LOGGER.warning("Failed to send MQTT notification for status update: " + mqttEx.getMessage());
+            }
+
             return Response.ok(sensor).build();
 
         } catch (Exception e) {
@@ -414,6 +443,14 @@ public class SensorController {
 
             // Fetch updated sensor
             Sensor updatedSensor = sensorService.findById(id);
+
+            // Notify IoT devices to stop this sensor via MQTT
+            try {
+                mqttPublisherService.notifySensorDeleted(sensor.getDeviceId());
+                LOGGER.info("MQTT notification sent for sensor deactivation: " + id);
+            } catch (Exception mqttEx) {
+                LOGGER.warning("Failed to send MQTT notification for sensor deactivation: " + mqttEx.getMessage());
+            }
 
             return Response.ok(updatedSensor)
                     .entity(new SuccessResponse("Sensor deactivated successfully"))

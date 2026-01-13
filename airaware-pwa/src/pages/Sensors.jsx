@@ -17,6 +17,16 @@ import {
     Wind,
     Droplets,
     AlertCircle,
+    X,
+    Save,
+    Loader2,
+    Edit,
+    Trash2,
+    Power,
+    Eye,
+    Clock,
+    Cpu,
+    Navigation,
 } from 'lucide-react';
 import { useSensors } from '../context/AppContext';
 import { sensorsAPI, readingsAPI, mockData } from '../services/api';
@@ -25,9 +35,326 @@ import { AQIBadge } from '../components/Gauges/AQIGauge';
 import { Sparkline } from '../components/Charts/TimeSeriesChart';
 
 /**
+ * Sensor Actions Menu (Three Dots Dropdown)
+ */
+function SensorActionsMenu({ sensor, onView, onEdit, onToggleStatus, onDelete, isOpen, onClose }) {
+    const menuRef = React.useRef(null);
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                onClose();
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isOpen, onClose]);
+
+    if (!isOpen) return null;
+
+    const isActive = sensor.status === 'ACTIVE';
+
+    return (
+        <motion.div
+            ref={menuRef}
+            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+            className="absolute right-0 top-full mt-1 z-50 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden"
+        >
+            <div className="py-1">
+                <button
+                    onClick={(e) => { e.stopPropagation(); onView(); onClose(); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                >
+                    <Eye className="w-4 h-4 text-slate-400" />
+                    View Details
+                </button>
+                <button
+                    onClick={(e) => { e.stopPropagation(); onEdit(); onClose(); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                >
+                    <Edit className="w-4 h-4 text-slate-400" />
+                    Edit Sensor
+                </button>
+                <button
+                    onClick={(e) => { e.stopPropagation(); onToggleStatus(); onClose(); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                >
+                    <Power className={`w-4 h-4 ${isActive ? 'text-orange-500' : 'text-green-500'}`} />
+                    {isActive ? 'Deactivate' : 'Activate'}
+                </button>
+                <div className="border-t border-slate-200 dark:border-slate-700 my-1" />
+                <button
+                    onClick={(e) => { e.stopPropagation(); onDelete(); onClose(); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Sensor
+                </button>
+            </div>
+        </motion.div>
+    );
+}
+
+/**
+ * Sensor Detail Modal Component
+ */
+function SensorDetailModal({ sensor, reading, history, isOpen, onClose, onEdit, onDelete }) {
+    if (!isOpen || !sensor) return null;
+
+    const status = getSensorStatus(sensor.status);
+    const { aqi, color, category } = calculateAQI(reading?.pm25 || 0);
+    const isActive = sensor.status === 'ACTIVE';
+
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <>
+                    {/* Backdrop */}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+                        onClick={onClose}
+                    />
+
+                    {/* Modal */}
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+                            {/* Header */}
+                            <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+                                <div className="flex items-center gap-3">
+                                    <div
+                                        className="w-3 h-3 rounded-full"
+                                        style={{
+                                            backgroundColor: status.color,
+                                            boxShadow: isActive ? `0 0 10px ${status.color}` : 'none'
+                                        }}
+                                    />
+                                    <div>
+                                        <h2 className="text-xl font-display font-bold text-slate-900 dark:text-white">
+                                            {sensor.deviceId || sensor.sensorId}
+                                        </h2>
+                                        <p className="text-sm text-slate-500">{sensor.description || sensor.name}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={onEdit}
+                                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                                        title="Edit Sensor"
+                                    >
+                                        <Edit className="w-5 h-5 text-slate-500" />
+                                    </button>
+                                    <button
+                                        onClick={onClose}
+                                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                                    >
+                                        <X className="w-5 h-5 text-slate-500" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Content */}
+                            <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+                                {/* AQI Section */}
+                                {isActive && reading && (
+                                    <div
+                                        className="rounded-xl p-6 mb-6"
+                                        style={{ backgroundColor: `${color}15` }}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                                    Current Air Quality Index
+                                                </span>
+                                                <div className="flex items-baseline gap-3 mt-2">
+                                                    <span
+                                                        className="text-5xl font-display font-bold"
+                                                        style={{ color }}
+                                                    >
+                                                        {aqi}
+                                                    </span>
+                                                    <span
+                                                        className="text-lg font-medium"
+                                                        style={{ color }}
+                                                    >
+                                                        {category}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <Activity className="w-16 h-16" style={{ color, opacity: 0.4 }} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Offline State */}
+                                {!isActive && (
+                                    <div className="rounded-xl p-6 mb-6 bg-slate-100 dark:bg-slate-700/50">
+                                        <div className="flex items-center justify-center gap-3 text-slate-400">
+                                            <WifiOff className="w-8 h-8" />
+                                            <span className="text-lg font-medium">Sensor Offline</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Metrics Grid */}
+                                {isActive && reading && (
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                                        <div className="glass-card p-4">
+                                            <div className="flex items-center gap-2 text-slate-500 mb-2">
+                                                <Thermometer className="w-4 h-4 text-red-500" />
+                                                <span className="text-xs font-medium uppercase">Temperature</span>
+                                            </div>
+                                            <span className="text-2xl font-bold">{formatNumber(reading.temperature)}°C</span>
+                                        </div>
+                                        <div className="glass-card p-4">
+                                            <div className="flex items-center gap-2 text-slate-500 mb-2">
+                                                <Droplets className="w-4 h-4 text-blue-500" />
+                                                <span className="text-xs font-medium uppercase">Humidity</span>
+                                            </div>
+                                            <span className="text-2xl font-bold">{formatNumber(reading.humidity)}%</span>
+                                        </div>
+                                        <div className="glass-card p-4">
+                                            <div className="flex items-center gap-2 text-slate-500 mb-2">
+                                                <Wind className="w-4 h-4 text-violet-500" />
+                                                <span className="text-xs font-medium uppercase">CO₂</span>
+                                            </div>
+                                            <span className="text-2xl font-bold">{formatNumber(reading.co2, 0)} ppm</span>
+                                        </div>
+                                        <div className="glass-card p-4">
+                                            <div className="flex items-center gap-2 text-slate-500 mb-2">
+                                                <Activity className="w-4 h-4 text-orange-500" />
+                                                <span className="text-xs font-medium uppercase">PM2.5</span>
+                                            </div>
+                                            <span className="text-2xl font-bold">{formatNumber(reading.pm25)} µg/m³</span>
+                                        </div>
+                                        <div className="glass-card p-4">
+                                            <div className="flex items-center gap-2 text-slate-500 mb-2">
+                                                <Activity className="w-4 h-4 text-amber-500" />
+                                                <span className="text-xs font-medium uppercase">PM10</span>
+                                            </div>
+                                            <span className="text-2xl font-bold">{formatNumber(reading.pm10)} µg/m³</span>
+                                        </div>
+                                        <div className="glass-card p-4">
+                                            <div className="flex items-center gap-2 text-slate-500 mb-2">
+                                                <Activity className="w-4 h-4 text-purple-500" />
+                                                <span className="text-xs font-medium uppercase">VOC</span>
+                                            </div>
+                                            <span className="text-2xl font-bold">{formatNumber(reading.voc)}</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Sensor Info */}
+                                <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
+                                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">
+                                        Sensor Information
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700">
+                                                <Cpu className="w-5 h-5 text-slate-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-slate-500">Model</p>
+                                                <p className="font-medium">{sensor.model || 'Raspberry Pi'}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700">
+                                                <Power className="w-5 h-5 text-slate-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-slate-500">Status</p>
+                                                <p className="font-medium" style={{ color: status.color }}>{status.label}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700">
+                                                <MapPin className="w-5 h-5 text-slate-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-slate-500">Location</p>
+                                                <p className="font-medium">
+                                                    {sensor.location?.city || 'Unknown'}, {sensor.location?.country || 'Tunisia'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700">
+                                                <Navigation className="w-5 h-5 text-slate-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-slate-500">Coordinates</p>
+                                                <p className="font-medium text-sm">
+                                                    {sensor.location?.latitude?.toFixed(4) || '—'}, {sensor.location?.longitude?.toFixed(4) || '—'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Trend Chart */}
+                                {isActive && history && history.length > 0 && (
+                                    <div className="border-t border-slate-200 dark:border-slate-700 pt-6 mt-6">
+                                        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">
+                                            24-Hour PM2.5 Trend
+                                        </h3>
+                                        <div className="h-32">
+                                            <Sparkline
+                                                data={history}
+                                                metric="pm25"
+                                                width="100%"
+                                                height={120}
+                                                color={color}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer */}
+                            <div className="flex items-center justify-between gap-3 p-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                                <button
+                                    onClick={onDelete}
+                                    className="btn text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                    Delete
+                                </button>
+                                <button
+                                    onClick={onClose}
+                                    className="btn btn-primary"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </>
+            )}
+        </AnimatePresence>
+    );
+}
+
+/**
  * Sensor Card Component
  */
-function SensorCard({ sensor, reading, history, onClick }) {
+function SensorCard({ sensor, reading, history, onClick, onMenuAction }) {
+    const [menuOpen, setMenuOpen] = useState(false);
     const status = getSensorStatus(sensor.status);
     const { aqi, color, category } = calculateAQI(reading?.pm25 || 0);
     const isActive = sensor.status === 'ACTIVE';
@@ -61,12 +388,30 @@ function SensorCard({ sensor, reading, history, onClick }) {
                         <p className="text-sm text-slate-500 mt-0.5">{sensor.description || sensor.name}</p>
                     </div>
 
-                    <button
-                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => { e.stopPropagation(); }}
-                    >
-                        <MoreVertical className="w-4 h-4 text-slate-400" />
-                    </button>
+                    <div className="relative">
+                        <button
+                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => { 
+                                e.stopPropagation(); 
+                                setMenuOpen(!menuOpen);
+                            }}
+                        >
+                            <MoreVertical className="w-4 h-4 text-slate-400" />
+                        </button>
+                        <AnimatePresence>
+                            {menuOpen && (
+                                <SensorActionsMenu
+                                    sensor={sensor}
+                                    isOpen={menuOpen}
+                                    onClose={() => setMenuOpen(false)}
+                                    onView={() => onMenuAction('view', sensor)}
+                                    onEdit={() => onMenuAction('edit', sensor)}
+                                    onToggleStatus={() => onMenuAction('toggleStatus', sensor)}
+                                    onDelete={() => onMenuAction('delete', sensor)}
+                                />
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
 
                 {/* Location */}
@@ -256,6 +601,396 @@ function SensorListItem({ sensor, reading, onClick }) {
 }
 
 /**
+ * Add Sensor Modal Component
+ */
+function AddSensorModal({ isOpen, onClose, onSensorAdded }) {
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState(null);
+    const [formData, setFormData] = useState({
+        deviceId: '',
+        model: 'AirAware Pro v1',
+        description: '',
+        status: 'ACTIVE',
+        location: {
+            latitude: '',
+            longitude: '',
+            city: '',
+            country: 'Tunisia'
+        },
+        tenant: {
+            organizationName: 'Tunisia Environmental Monitoring',
+            contactEmail: 'admin@tem.tn',
+            contactPhone: '+216-71-123-456'
+        }
+    });
+
+    // Reset form when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            setFormData({
+                deviceId: '',
+                model: 'AirAware Pro v1',
+                description: '',
+                status: 'ACTIVE',
+                location: {
+                    latitude: '',
+                    longitude: '',
+                    city: '',
+                    country: 'Tunisia'
+                },
+                tenant: {
+                    organizationName: 'Tunisia Environmental Monitoring',
+                    contactEmail: 'admin@tem.tn',
+                    contactPhone: '+216-71-123-456'
+                }
+            });
+            setError(null);
+        }
+    }, [isOpen]);
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        
+        if (name.startsWith('location.')) {
+            const locationField = name.split('.')[1];
+            setFormData(prev => ({
+                ...prev,
+                location: {
+                    ...prev.location,
+                    [locationField]: locationField === 'latitude' || locationField === 'longitude' 
+                        ? (value === '' ? '' : parseFloat(value) || value)
+                        : value
+                }
+            }));
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                [name]: value
+            }));
+        }
+    };
+
+    const validateForm = () => {
+        if (!formData.deviceId.trim()) {
+            setError('Device ID is required');
+            return false;
+        }
+        if (!formData.model.trim()) {
+            setError('Sensor model is required');
+            return false;
+        }
+        if (!formData.description.trim()) {
+            setError('Description is required');
+            return false;
+        }
+        if (!formData.location.city.trim()) {
+            setError('City is required');
+            return false;
+        }
+        if (formData.location.latitude === '' || formData.location.longitude === '') {
+            setError('Latitude and Longitude are required');
+            return false;
+        }
+        
+        const lat = parseFloat(formData.location.latitude);
+        const lng = parseFloat(formData.location.longitude);
+        
+        if (isNaN(lat) || lat < -90 || lat > 90) {
+            setError('Latitude must be between -90 and 90');
+            return false;
+        }
+        if (isNaN(lng) || lng < -180 || lng > 180) {
+            setError('Longitude must be between -180 and 180');
+            return false;
+        }
+        
+        return true;
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError(null);
+
+        if (!validateForm()) {
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            // Prepare sensor data with proper types
+            const sensorData = {
+                ...formData,
+                location: {
+                    ...formData.location,
+                    latitude: parseFloat(formData.location.latitude),
+                    longitude: parseFloat(formData.location.longitude)
+                }
+            };
+
+            console.log('[AddSensor] Creating sensor:', sensorData);
+            
+            const createdSensor = await sensorsAPI.create(sensorData);
+            
+            console.log('[AddSensor] Sensor created successfully:', createdSensor);
+            
+            // Notify parent component
+            if (onSensorAdded) {
+                onSensorAdded(createdSensor);
+            }
+            
+            onClose();
+        } catch (err) {
+            console.error('[AddSensor] Error creating sensor:', err);
+            setError(err.message || 'Failed to create sensor. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <>
+                    {/* Backdrop */}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+                        onClick={onClose}
+                    />
+
+                    {/* Modal */}
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden">
+                            {/* Header */}
+                            <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+                                <div>
+                                    <h2 className="text-xl font-display font-bold text-slate-900 dark:text-white">
+                                        Add New Sensor
+                                    </h2>
+                                    <p className="text-sm text-slate-500 mt-1">
+                                        Register a new air quality monitoring device
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={onClose}
+                                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                                >
+                                    <X className="w-5 h-5 text-slate-500" />
+                                </button>
+                            </div>
+
+                            {/* Form */}
+                            <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-180px)]">
+                                {/* Error Message */}
+                                {error && (
+                                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+                                        <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                                            <AlertCircle className="w-5 h-5" />
+                                            <span className="font-medium">{error}</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Device ID */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                        Device ID <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="deviceId"
+                                        value={formData.deviceId}
+                                        onChange={handleInputChange}
+                                        placeholder="e.g., SENSOR_TUNIS_001"
+                                        className="input w-full"
+                                        disabled={isSubmitting}
+                                    />
+                                    <p className="text-xs text-slate-500 mt-1">
+                                        Unique identifier for the sensor device
+                                    </p>
+                                </div>
+
+                                {/* Model */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                        Sensor Model <span className="text-red-500">*</span>
+                                    </label>
+                                    <select
+                                        name="model"
+                                        value={formData.model}
+                                        onChange={handleInputChange}
+                                        className="input w-full"
+                                        disabled={isSubmitting}
+                                    >
+                                        <option value="AirAware Pro v1">AirAware Pro v1</option>
+                                        <option value="AirAware Lite v2">AirAware Lite v2</option>
+                                        <option value="Raspberry Pi 4">Raspberry Pi 4</option>
+                                        <option value="Raspberry Pi Zero">Raspberry Pi Zero</option>
+                                        <option value="Custom Device">Custom Device</option>
+                                    </select>
+                                </div>
+
+                                {/* Description */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                        Description <span className="text-red-500">*</span>
+                                    </label>
+                                    <textarea
+                                        name="description"
+                                        value={formData.description}
+                                        onChange={handleInputChange}
+                                        placeholder="e.g., Downtown office - monitoring traffic pollution"
+                                        rows={2}
+                                        className="input w-full resize-none"
+                                        disabled={isSubmitting}
+                                    />
+                                </div>
+
+                                {/* Status */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                        Initial Status
+                                    </label>
+                                    <select
+                                        name="status"
+                                        value={formData.status}
+                                        onChange={handleInputChange}
+                                        className="input w-full"
+                                        disabled={isSubmitting}
+                                    >
+                                        <option value="ACTIVE">Active</option>
+                                        <option value="INACTIVE">Inactive</option>
+                                        <option value="MAINTENANCE">Maintenance</option>
+                                    </select>
+                                </div>
+
+                                {/* Location Section */}
+                                <div className="border-t border-slate-200 dark:border-slate-700 pt-5">
+                                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                                        <MapPin className="w-4 h-4 text-air-600" />
+                                        Location Details
+                                    </h3>
+
+                                    {/* City & Country */}
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                                City <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="location.city"
+                                                value={formData.location.city}
+                                                onChange={handleInputChange}
+                                                placeholder="e.g., Tunis"
+                                                className="input w-full"
+                                                disabled={isSubmitting}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                                Country
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="location.country"
+                                                value={formData.location.country}
+                                                onChange={handleInputChange}
+                                                placeholder="e.g., Tunisia"
+                                                className="input w-full"
+                                                disabled={isSubmitting}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Coordinates */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                                Latitude <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                name="location.latitude"
+                                                value={formData.location.latitude}
+                                                onChange={handleInputChange}
+                                                placeholder="e.g., 36.8065"
+                                                className="input w-full"
+                                                disabled={isSubmitting}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                                Longitude <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                name="location.longitude"
+                                                value={formData.location.longitude}
+                                                onChange={handleInputChange}
+                                                placeholder="e.g., 10.1815"
+                                                className="input w-full"
+                                                disabled={isSubmitting}
+                                            />
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-2">
+                                        💡 Tip: You can get coordinates from Google Maps by right-clicking on a location
+                                    </p>
+                                </div>
+                            </form>
+
+                            {/* Footer */}
+                            <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="btn btn-secondary"
+                                    disabled={isSubmitting}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    onClick={handleSubmit}
+                                    className="btn btn-primary"
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Creating...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="w-4 h-4" />
+                                            Create Sensor
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </>
+            )}
+        </AnimatePresence>
+    );
+}
+
+/**
  * Sensors Page - WITH REAL API INTEGRATION
  */
 export default function SensorsPage() {
@@ -269,6 +1004,67 @@ export default function SensorsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [useMockData, setUseMockData] = useState(false);
     const [error, setError] = useState(null);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [selectedSensorForDetail, setSelectedSensorForDetail] = useState(null);
+
+    // Handle sensor card click - open detail modal
+    const handleSensorClick = (sensor) => {
+        setSelectedSensorForDetail(sensor);
+        setIsDetailModalOpen(true);
+        setSelectedSensor(sensor); // Also update context
+    };
+
+    // Handle menu actions from the three-dots menu
+    const handleMenuAction = async (action, sensor) => {
+        console.log(`[Sensors] Menu action: ${action}`, sensor);
+        
+        switch (action) {
+            case 'view':
+                handleSensorClick(sensor);
+                break;
+            case 'edit':
+                // TODO: Implement edit modal
+                console.log('[Sensors] Edit sensor:', sensor.deviceId);
+                alert(`Edit functionality for ${sensor.deviceId} coming soon!`);
+                break;
+            case 'toggleStatus':
+                try {
+                    const newStatus = sensor.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+                    await sensorsAPI.updateStatus(sensor.id, newStatus);
+                    console.log(`[Sensors] Status updated to ${newStatus}`);
+                    loadData(); // Refresh data
+                } catch (err) {
+                    console.error('[Sensors] Failed to update status:', err);
+                    alert('Failed to update sensor status. Please try again.');
+                }
+                break;
+            case 'delete':
+                if (window.confirm(`Are you sure you want to delete sensor "${sensor.deviceId}"? This action cannot be undone.`)) {
+                    try {
+                        await sensorsAPI.delete(sensor.id);
+                        console.log('[Sensors] Sensor deleted:', sensor.deviceId);
+                        setIsDetailModalOpen(false);
+                        loadData(); // Refresh data
+                    } catch (err) {
+                        console.error('[Sensors] Failed to delete sensor:', err);
+                        alert('Failed to delete sensor. Please try again.');
+                    }
+                }
+                break;
+            default:
+                console.warn('[Sensors] Unknown action:', action);
+        }
+    };
+
+    // Handle new sensor added
+    const handleSensorAdded = (newSensor) => {
+        console.log('[Sensors] New sensor added:', newSensor);
+        // Add the new sensor to the list
+        setSensors(prev => [...prev, newSensor]);
+        // Refresh data to get updated list
+        loadData();
+    };
 
     // Load data from API
     useEffect(() => {
@@ -472,7 +1268,10 @@ export default function SensorsPage() {
                     </p>
                 </div>
 
-                <button className="btn btn-primary">
+                <button 
+                    className="btn btn-primary"
+                    onClick={() => setIsAddModalOpen(true)}
+                >
                     <Plus className="w-4 h-4" />
                     Add Sensor
                 </button>
@@ -590,7 +1389,8 @@ export default function SensorsPage() {
                                     sensor={sensor}
                                     reading={currentReadings[sensorId]}
                                     history={historicalData[sensorId]}
-                                    onClick={() => setSelectedSensor(sensor)}
+                                    onClick={() => handleSensorClick(sensor)}
+                                    onMenuAction={handleMenuAction}
                                 />
                             );
                         })}
@@ -659,6 +1459,27 @@ export default function SensorsPage() {
                     </p>
                 </div>
             )}
+
+            {/* Add Sensor Modal */}
+            <AddSensorModal
+                isOpen={isAddModalOpen}
+                onClose={() => setIsAddModalOpen(false)}
+                onSensorAdded={handleSensorAdded}
+            />
+
+            {/* Sensor Detail Modal */}
+            <SensorDetailModal
+                sensor={selectedSensorForDetail}
+                reading={selectedSensorForDetail ? currentReadings[selectedSensorForDetail.deviceId || selectedSensorForDetail.sensorId] : null}
+                history={selectedSensorForDetail ? historicalData[selectedSensorForDetail.deviceId || selectedSensorForDetail.sensorId] : null}
+                isOpen={isDetailModalOpen}
+                onClose={() => {
+                    setIsDetailModalOpen(false);
+                    setSelectedSensorForDetail(null);
+                }}
+                onEdit={() => handleMenuAction('edit', selectedSensorForDetail)}
+                onDelete={() => handleMenuAction('delete', selectedSensorForDetail)}
+            />
         </motion.div>
     );
 }

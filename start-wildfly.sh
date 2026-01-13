@@ -20,7 +20,7 @@ export EMAIL_NOTIFICATIONS_ENABLED=true
 export SMTP_HOST=smtp.gmail.com
 export SMTP_PORT=587
 export SMTP_USERNAME=aouadniichrak@gmail.com
-export SMTP_PASSWORD=kzrq rpbz gwrt bsrf
+export SMTP_PASSWORD="lwan jzam objc qwnl"
 
 # Comma-separated list of email recipients
 export ALERT_EMAIL_RECIPIENTS=ichrak.aouadni@supcom.tn

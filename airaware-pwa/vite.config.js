@@ -186,7 +186,7 @@ export default defineConfig({
                 rewrite: (path) => path.replace(/^\/iam\/api/, '/api')
             },
             '/ml': {
-                target: 'http://localhost:8000',
+                target: 'http://localhost:5000',
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/ml/, '')
             }

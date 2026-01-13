@@ -129,9 +129,21 @@ const AlertItem = forwardRef(function AlertItem({ alert, onResolve, onDismiss, o
             {/* Actions Row */}
             <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-200 dark:border-slate-700">
                 {alert.resolved ? (
-                    <div className="flex items-center gap-2 text-green-600">
-                        <CheckCircle className="w-4 h-4" />
-                        <span className="text-sm font-medium">Resolved</span>
+                    <div className="flex-1">
+                        <div className="flex items-center gap-2 text-green-600">
+                            <CheckCircle className="w-4 h-4" />
+                            <span className="text-sm font-medium">Resolved</span>
+                            {alert.resolvedAt && (
+                                <span className="text-xs text-slate-400">
+                                    • {formatRelativeTime(alert.resolvedAt)}
+                                </span>
+                            )}
+                        </div>
+                        {alert.resolutionNotes && (
+                            <p className="text-xs text-slate-500 mt-1 italic">
+                                "{alert.resolutionNotes}"
+                            </p>
+                        )}
                     </div>
                 ) : (
                     <>

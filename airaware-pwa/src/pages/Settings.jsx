@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   User,
@@ -15,8 +15,13 @@ import {
   LogOut,
   ChevronRight,
   Check,
+  BellRing,
+  BellOff,
+  AlertTriangle,
+  MessageSquare,
 } from 'lucide-react';
 import { useTheme, useSettings, useApp } from '../context/AppContext';
+import notificationService from '../services/notifications';
 
 /**
  * Settings Section Component
@@ -86,6 +91,234 @@ function Toggle({ enabled, onChange }) {
         `}
       />
     </button>
+  );
+}
+
+/**
+ * Notification Settings Component
+ */
+function NotificationSettings({ settings, updateSettings }) {
+  const [permissionStatus, setPermissionStatus] = useState(
+    notificationService.getPermissionStatus()
+  );
+  const [pushStatus, setPushStatus] = useState({ supported: false, subscribed: false });
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Check push subscription status on mount
+  useEffect(() => {
+    const checkPushStatus = async () => {
+      const status = await notificationService.getWebPushStatus();
+      setPushStatus(status);
+    };
+    checkPushStatus();
+  }, [permissionStatus]);
+
+  // Update notification service when settings change
+  useEffect(() => {
+    notificationService.updateNotificationSettings({
+      enabled: settings.notifications,
+      pushEnabled: settings.pushNotifications !== false,
+      toastEnabled: settings.toastNotifications !== false,
+      criticalOnly: settings.criticalOnly || false
+    });
+  }, [settings.notifications, settings.pushNotifications, settings.toastNotifications, settings.criticalOnly]);
+
+  const handleRequestPermission = async () => {
+    setIsLoading(true);
+    try {
+      const result = await notificationService.requestPermission();
+      setPermissionStatus(result);
+      // Refresh push status after permission change
+      const status = await notificationService.getWebPushStatus();
+      setPushStatus(status);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTestNotification = async () => {
+    // Show a test toast notification
+    notificationService.showToast({
+      title: 'Test Notification',
+      message: 'This is a test notification. Your notifications are working!',
+      type: 'success',
+      duration: 5000
+    });
+
+    // Also show browser notification if permitted
+    if (permissionStatus === 'granted') {
+      notificationService.showAlertNotification({
+        id: 'test-' + Date.now(),
+        type: 'TEST',
+        severity: 'INFO',
+        message: 'This is a test browser notification!',
+        sensorId: 'TEST'
+      });
+    }
+  };
+
+  const handleTestBackgroundPush = async () => {
+    setIsLoading(true);
+    try {
+      // Test via service worker (local test)
+      await notificationService.testLocalPush();
+      notificationService.showToast({
+        title: 'Background Push Test',
+        message: 'A push notification was sent! Check your notification tray.',
+        type: 'info',
+        duration: 5000
+      });
+    } catch (error) {
+      notificationService.showToast({
+        title: 'Test Failed',
+        message: 'Could not send test push: ' + error.message,
+        type: 'error',
+        duration: 5000
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <>
+      {/* Browser Permission Status */}
+      {notificationService.isNotificationSupported() && (
+        <SettingsItem
+          icon={permissionStatus === 'granted' ? BellRing : BellOff}
+          label="Browser Notifications"
+          description={
+            permissionStatus === 'granted' 
+              ? 'Notifications are enabled' 
+              : permissionStatus === 'denied'
+                ? 'Notifications blocked - enable in browser settings'
+                : 'Click to enable browser notifications'
+          }
+        >
+          {permissionStatus === 'granted' ? (
+            <span className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
+              <Check className="w-4 h-4" /> Enabled
+            </span>
+          ) : permissionStatus === 'denied' ? (
+            <span className="text-sm text-red-500">Blocked</span>
+          ) : (
+            <button
+              onClick={handleRequestPermission}
+              disabled={isLoading}
+              className="btn btn-primary text-sm py-1.5 px-3"
+            >
+              {isLoading ? 'Enabling...' : 'Enable'}
+            </button>
+          )}
+        </SettingsItem>
+      )}
+
+      {/* Background Push Status */}
+      {pushStatus.supported && permissionStatus === 'granted' && (
+        <SettingsItem
+          icon={Smartphone}
+          label="Background Notifications"
+          description={
+            pushStatus.subscribed
+              ? '✅ Active - You\'ll receive alerts even when the app is closed'
+              : 'Notifications when app is closed/in background'
+          }
+        >
+          {pushStatus.subscribed ? (
+            <span className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
+              <Check className="w-4 h-4" /> Active
+            </span>
+          ) : (
+            <button
+              onClick={handleRequestPermission}
+              disabled={isLoading}
+              className="btn btn-primary text-sm py-1.5 px-3"
+            >
+              Activate
+            </button>
+          )}
+        </SettingsItem>
+      )}
+
+      {/* Master Toggle */}
+      <SettingsItem
+        icon={Bell}
+        label="All Notifications"
+        description="Enable or disable all notifications"
+      >
+        <Toggle
+          enabled={settings.notifications}
+          onChange={(enabled) => updateSettings({ notifications: enabled })}
+        />
+      </SettingsItem>
+
+      {/* In-App Toasts */}
+      <SettingsItem
+        icon={MessageSquare}
+        label="In-App Alerts"
+        description="Show toast notifications inside the app"
+      >
+        <Toggle
+          enabled={settings.toastNotifications !== false}
+          onChange={(enabled) => updateSettings({ toastNotifications: enabled })}
+        />
+      </SettingsItem>
+
+      {/* Critical Only */}
+      <SettingsItem
+        icon={AlertTriangle}
+        label="Critical Alerts Only"
+        description="Only notify for critical air quality issues"
+      >
+        <Toggle
+          enabled={settings.criticalOnly || false}
+          onChange={(enabled) => updateSettings({ criticalOnly: enabled })}
+        />
+      </SettingsItem>
+
+      {/* Sound Alerts */}
+      <SettingsItem
+        icon={settings.soundAlerts ? Volume2 : VolumeX}
+        label="Sound Alerts"
+        description="Play sound for critical alerts"
+      >
+        <Toggle
+          enabled={settings.soundAlerts}
+          onChange={(enabled) => updateSettings({ soundAlerts: enabled })}
+        />
+      </SettingsItem>
+
+      {/* Test In-App Notification */}
+      <SettingsItem
+        icon={Bell}
+        label="Test In-App Notification"
+        description="Send a test notification inside the app"
+      >
+        <button
+          onClick={handleTestNotification}
+          className="btn text-sm py-1.5 px-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600"
+        >
+          Test
+        </button>
+      </SettingsItem>
+
+      {/* Test Background Push - only show if subscribed */}
+      {pushStatus.subscribed && (
+        <SettingsItem
+          icon={Smartphone}
+          label="Test Background Push"
+          description="Test notification when app is in background"
+        >
+          <button
+            onClick={handleTestBackgroundPush}
+            disabled={isLoading}
+            className="btn text-sm py-1.5 px-3 bg-air-100 dark:bg-air-900/30 text-air-700 dark:text-air-300 hover:bg-air-200 dark:hover:bg-air-800/50"
+          >
+            {isLoading ? 'Sending...' : 'Test Push'}
+          </button>
+        </SettingsItem>
+      )}
+    </>
   );
 }
 
@@ -165,27 +398,7 @@ export default function SettingsPage() {
       
       {/* Notifications Section */}
       <SettingsSection title="Notifications">
-        <SettingsItem
-          icon={Bell}
-          label="Push Notifications"
-          description="Receive alerts on your device"
-        >
-          <Toggle
-            enabled={settings.notifications}
-            onChange={(enabled) => updateSettings({ notifications: enabled })}
-          />
-        </SettingsItem>
-        
-        <SettingsItem
-          icon={settings.soundAlerts ? Volume2 : VolumeX}
-          label="Sound Alerts"
-          description="Play sound for critical alerts"
-        >
-          <Toggle
-            enabled={settings.soundAlerts}
-            onChange={(enabled) => updateSettings({ soundAlerts: enabled })}
-          />
-        </SettingsItem>
+        <NotificationSettings settings={settings} updateSettings={updateSettings} />
       </SettingsSection>
       
       {/* Data Section */}

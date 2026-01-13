@@ -19,9 +19,14 @@ import java.util.List;
 @ApplicationScoped
 public class AlertService {
 
+    private static final java.util.logging.Logger LOGGER = java.util.logging.Logger.getLogger(AlertService.class.getName());
+
     @Inject
     @ApiDatabase
     private MongoDatabase database;
+
+    @Inject
+    private NotificationService notificationService;
 
     private MongoCollection<Document> collection() {
         return database.getCollection("alerts");
@@ -29,9 +34,17 @@ public class AlertService {
 
     /** Create or update an alert */
     public void saveAlert(Alert alert) {
+        saveAlert(alert, true); // Default: send notifications
+    }
+
+    /** Create or update an alert with option to send notifications */
+    public void saveAlert(Alert alert, boolean sendNotification) {
         if (alert.getTriggeredAt() == null) {
             alert.setTriggeredAt(Instant.now());
         }
+
+        // Check if this is a new alert (for notification purposes)
+        boolean isNewAlert = findById(alert.getId()) == null;
 
         Document doc = new Document()
                 .append("_id", alert.getId())
@@ -58,6 +71,16 @@ public class AlertService {
 
         // Insert or update existing alert
         collection().replaceOne(Filters.eq("_id", alert.getId()), doc, new ReplaceOptions().upsert(true));
+
+        // Send notifications for new alerts only (not updates)
+        if (isNewAlert && sendNotification && !alert.isResolved()) {
+            try {
+                LOGGER.info("📤 Triggering notifications for new alert: " + alert.getType() + " [" + alert.getSeverity() + "]");
+                notificationService.sendAlertNotification(alert);
+            } catch (Exception e) {
+                LOGGER.warning("Failed to send alert notification: " + e.getMessage());
+            }
+        }
     }
 
     /** Retrieve an alert by ID */
@@ -100,21 +123,33 @@ public class AlertService {
         return alerts;
     }
 
-    /** Mark an alert as resolved */
-    public void resolveAlert(String id) {
+    /** Mark an alert as resolved with optional notes */
+    public void resolveAlert(String id, String resolutionNotes) {
+        Document updateFields = new Document("resolved", true)
+                .append("resolvedAt", Instant.now().toString());
+        
+        if (resolutionNotes != null && !resolutionNotes.trim().isEmpty()) {
+            updateFields.append("resolutionNotes", resolutionNotes.trim());
+        }
+
         // Try string ID first
         long modified = collection().updateOne(
                 Filters.eq("_id", id),
-                new Document("$set", new Document("resolved", true))
+                new Document("$set", updateFields)
         ).getModifiedCount();
 
         // If not found and valid ObjectId, try with ObjectId
         if (modified == 0 && ObjectId.isValid(id)) {
             collection().updateOne(
                     Filters.eq("_id", new ObjectId(id)),
-                    new Document("$set", new Document("resolved", true))
+                    new Document("$set", updateFields)
             );
         }
+    }
+
+    /** Mark an alert as resolved (without notes - backward compatible) */
+    public void resolveAlert(String id) {
+        resolveAlert(id, null);
     }
 
     /** Delete an alert */
@@ -158,6 +193,19 @@ public class AlertService {
 
         alert.setSensorId(doc.getString("sensorId"));
         alert.setResolved(doc.getBoolean("resolved", false));
+        alert.setResolutionNotes(doc.getString("resolutionNotes"));
+
+        // Handle resolvedAt as both String and Date
+        Object resolvedAtObj = doc.get("resolvedAt");
+        if (resolvedAtObj instanceof String) {
+            try {
+                alert.setResolvedAt(Instant.parse((String) resolvedAtObj));
+            } catch (Exception e) {
+                // Ignore parse errors
+            }
+        } else if (resolvedAtObj instanceof java.util.Date) {
+            alert.setResolvedAt(((java.util.Date) resolvedAtObj).toInstant());
+        }
 
         // Map embedded reading
         Document readingDoc = doc.get("reading", Document.class);

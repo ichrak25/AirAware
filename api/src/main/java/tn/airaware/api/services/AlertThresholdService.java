@@ -28,6 +28,22 @@ public class AlertThresholdService {
     @Inject
     private NotificationService notificationService;
 
+    // ==================== NOTIFICATION COOLDOWN SETTINGS ====================
+    
+    // ⚠️ TEMPORARILY DISABLE EMAIL NOTIFICATIONS
+    // Set to true to completely disable email notifications (useful when Gmail is blocked)
+    // Change to false once Gmail unblocks the account (usually after 1-24 hours)
+    private static final boolean DISABLE_EMAIL_NOTIFICATIONS = true;
+    
+    // Cooldown period in milliseconds (2 hours for CRITICAL alerts)
+    // This prevents email spam even when enabled
+    private static final long CRITICAL_ALERT_COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2 hours
+    
+    // Track last notification time per sensor+alert type to prevent spam
+    // Key: "sensorId:alertType", Value: timestamp of last email sent
+    private static final java.util.Map<String, Long> lastNotificationTimes = 
+            new java.util.concurrent.ConcurrentHashMap<>();
+
     // ==================== THRESHOLD DEFINITIONS ====================
 
     // PM2.5 thresholds (µg/m³) - EPA AQI breakpoints
@@ -124,16 +140,59 @@ public class AlertThresholdService {
                 alertService.saveAlert(alert);
                 LOGGER.info("🚨 Alert generated: " + alert.getType() + " - " + alert.getSeverity());
 
-                // Send notification for WARNING and CRITICAL alerts
-                if ("WARNING".equals(alert.getSeverity()) || "CRITICAL".equals(alert.getSeverity())) {
-                    notificationService.sendAlertNotification(alert);
+                // Only send email notifications for CRITICAL alerts with cooldown
+                if ("CRITICAL".equals(alert.getSeverity())) {
+                    if (DISABLE_EMAIL_NOTIFICATIONS) {
+                        LOGGER.info("📧 Email notifications DISABLED - CRITICAL alert logged only: " + alert.getType());
+                    } else if (shouldSendNotification(alert)) {
+                        notificationService.sendAlertNotification(alert);
+                        recordNotificationSent(alert);
+                        LOGGER.info("📧 Email notification sent for CRITICAL alert: " + alert.getType());
+                    } else {
+                        LOGGER.fine("⏳ Skipping notification (cooldown active): " + alert.getType());
+                    }
                 }
+                // WARNING and INFO alerts are logged to console but no email
+                // Users can see them in the PWA Alerts page
             } catch (Exception e) {
                 LOGGER.severe("Failed to save alert: " + e.getMessage());
             }
         }
 
         return generatedAlerts;
+    }
+
+    // ==================== NOTIFICATION COOLDOWN LOGIC ====================
+
+    /**
+     * Check if we should send a notification for this alert
+     * Returns true if no notification was sent recently for this sensor+alert type
+     */
+    private boolean shouldSendNotification(Alert alert) {
+        String key = getNotificationKey(alert);
+        Long lastSent = lastNotificationTimes.get(key);
+        
+        if (lastSent == null) {
+            return true; // Never sent before
+        }
+        
+        long elapsed = System.currentTimeMillis() - lastSent;
+        return elapsed >= CRITICAL_ALERT_COOLDOWN_MS;
+    }
+
+    /**
+     * Record that a notification was sent for this alert
+     */
+    private void recordNotificationSent(Alert alert) {
+        String key = getNotificationKey(alert);
+        lastNotificationTimes.put(key, System.currentTimeMillis());
+    }
+
+    /**
+     * Generate a unique key for tracking notifications per sensor+alert type
+     */
+    private String getNotificationKey(Alert alert) {
+        return alert.getSensorId() + ":" + alert.getType();
     }
 
     // ==================== INDIVIDUAL THRESHOLD CHECKS ====================

@@ -40,6 +40,12 @@ public class Alert implements Serializable {
     @Column("resolved")
     private boolean resolved = false;
 
+    @Column("resolvedAt")
+    private Instant resolvedAt;
+
+    @Column("resolutionNotes")
+    private String resolutionNotes;
+
     // ==================== Constructors ====================
 
     public Alert() {
@@ -124,6 +130,22 @@ public class Alert implements Serializable {
         this.resolved = resolved;
     }
 
+    public Instant getResolvedAt() {
+        return resolvedAt;
+    }
+
+    public void setResolvedAt(Instant resolvedAt) {
+        this.resolvedAt = resolvedAt;
+    }
+
+    public String getResolutionNotes() {
+        return resolutionNotes;
+    }
+
+    public void setResolutionNotes(String resolutionNotes) {
+        this.resolutionNotes = resolutionNotes;
+    }
+
     // ==================== toString ====================
 
     @Override
@@ -136,6 +158,8 @@ public class Alert implements Serializable {
                 ", triggeredAt=" + triggeredAt +
                 ", sensorId='" + sensorId + '\'' +
                 ", resolved=" + resolved +
+                ", resolvedAt=" + resolvedAt +
+                ", resolutionNotes='" + resolutionNotes + '\'' +
                 ", reading=" + (reading != null ? reading.toString() : "null") +
                 '}';
     }

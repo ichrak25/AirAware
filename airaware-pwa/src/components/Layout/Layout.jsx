@@ -172,10 +172,10 @@ export function Navbar() {
         <div className="flex items-center justify-between px-4 py-3">
           {/* Logo & Menu Toggle */}
           <div className="flex items-center gap-3">
-            <button
-              onClick={actions.toggleSidebar}
-              className="lg:hidden p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
+              <button
+                  onClick={actions.toggleSidebar}
+                  className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
               <Menu className="w-5 h-5 text-slate-600 dark:text-slate-300" />
             </button>
             
@@ -397,7 +397,7 @@ export function BottomNav() {
   const items = NAV_ITEMS.slice(0, 5); // Show only first 5 items
   
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 lg:hidden safe-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 safe-bottom">
       <div className="glass-card mx-4 mb-4 rounded-2xl border border-white/20 dark:border-slate-700/50">
         <div className="flex items-center justify-around py-2">
           {items.map(({ path, icon: Icon, label, badge }) => {

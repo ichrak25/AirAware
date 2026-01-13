@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Bell,
     Filter,
@@ -10,10 +10,22 @@ import {
     Calendar,
     RefreshCw,
     WifiOff,
+    X,
+    MessageSquare,
 } from 'lucide-react';
 import { useAlerts } from '../context/AppContext';
 import { alertsAPI, mockData } from '../services/api';
 import AlertList, { AlertSummary } from '../components/Alerts/AlertList';
+
+// Predefined resolution note options
+const RESOLUTION_PRESETS = [
+    'Fixed ventilation system',
+    'False alarm',
+    'Sensor recalibrated',
+    'Environmental conditions normalized',
+    'Maintenance completed',
+    'Issue acknowledged - monitoring',
+];
 
 /**
  * Alerts Page - WITH REAL API INTEGRATION
@@ -28,6 +40,12 @@ export default function AlertsPage() {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [useMockData, setUseMockData] = useState(false);
     const [error, setError] = useState(null);
+    
+    // Resolution dialog state
+    const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
+    const [alertToResolve, setAlertToResolve] = useState(null);
+    const [resolutionNotes, setResolutionNotes] = useState('');
+    const [isResolving, setIsResolving] = useState(false);
 
     // Load data from API
     useEffect(() => {
@@ -88,24 +106,52 @@ export default function AlertsPage() {
         }
     };
 
-    // Handle resolve alert
-    const handleResolveAlert = async (alertId) => {
+    // Open resolve dialog
+    const openResolveDialog = (alertId) => {
+        const alert = alerts.find(a => a.id === alertId);
+        setAlertToResolve(alert);
+        setResolutionNotes('');
+        setResolveDialogOpen(true);
+    };
+
+    // Close resolve dialog
+    const closeResolveDialog = () => {
+        setResolveDialogOpen(false);
+        setAlertToResolve(null);
+        setResolutionNotes('');
+    };
+
+    // Handle resolve alert with notes
+    const handleResolveAlert = async () => {
+        if (!alertToResolve) return;
+        
+        setIsResolving(true);
         try {
             if (!useMockData) {
-                await alertsAPI.resolve(alertId);
+                await alertsAPI.resolve(alertToResolve.id, resolutionNotes || null);
             }
-            resolveAlert(alertId);
+            resolveAlert(alertToResolve.id);
+            closeResolveDialog();
         } catch (err) {
             console.error('[Alerts] Failed to resolve alert:', err);
+        } finally {
+            setIsResolving(false);
         }
     };
 
-    // Handle resolve all alerts
+    // Handle resolve all alerts (quick resolve without notes)
     const handleResolveAll = async () => {
         const unresolvedAlerts = alerts.filter(a => !a.resolved);
 
         for (const alert of unresolvedAlerts) {
-            await handleResolveAlert(alert.id);
+            try {
+                if (!useMockData) {
+                    await alertsAPI.resolve(alert.id, 'Bulk resolved');
+                }
+                resolveAlert(alert.id);
+            } catch (err) {
+                console.error('[Alerts] Failed to resolve alert:', err);
+            }
         }
     };
 
@@ -305,7 +351,7 @@ export default function AlertsPage() {
                 <div className="lg:col-span-2">
                     <AlertList
                         alerts={sortedAlerts}
-                        onResolve={handleResolveAlert}
+                        onResolve={openResolveDialog}
                         onAlertClick={setSelectedAlert}
                         showResolved={true}
                         emptyMessage="No alerts match your filters"
@@ -365,6 +411,117 @@ export default function AlertsPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Resolution Notes Dialog */}
+            <AnimatePresence>
+                {resolveDialogOpen && alertToResolve && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        onClick={closeResolveDialog}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-md w-full p-6"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Header */}
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                                        <CheckCircle2 className="w-5 h-5 text-green-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-slate-900 dark:text-white">
+                                            Resolve Alert
+                                        </h3>
+                                        <p className="text-sm text-slate-500">
+                                            {alertToResolve.type?.replace(/_/g, ' ')}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={closeResolveDialog}
+                                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                                >
+                                    <X className="w-5 h-5 text-slate-500" />
+                                </button>
+                            </div>
+
+                            {/* Alert Info */}
+                            <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3 mb-4">
+                                <p className="text-sm text-slate-600 dark:text-slate-300">
+                                    {alertToResolve.message}
+                                </p>
+                                <p className="text-xs text-slate-400 mt-1">
+                                    Sensor: {alertToResolve.sensorId}
+                                </p>
+                            </div>
+
+                            {/* Quick Resolution Options */}
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                    <MessageSquare className="w-4 h-4 inline mr-1" />
+                                    Resolution Notes
+                                </label>
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                    {RESOLUTION_PRESETS.map((preset) => (
+                                        <button
+                                            key={preset}
+                                            onClick={() => setResolutionNotes(preset)}
+                                            className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                                                resolutionNotes === preset
+                                                    ? 'bg-air-500 text-white border-air-500'
+                                                    : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-air-300'
+                                            }`}
+                                        >
+                                            {preset}
+                                        </button>
+                                    ))}
+                                </div>
+                                <textarea
+                                    value={resolutionNotes}
+                                    onChange={(e) => setResolutionNotes(e.target.value)}
+                                    placeholder="Or enter custom notes..."
+                                    className="input w-full h-24 resize-none"
+                                />
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={closeResolveDialog}
+                                    className="btn btn-secondary flex-1"
+                                    disabled={isResolving}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleResolveAlert}
+                                    className="btn btn-primary flex-1"
+                                    disabled={isResolving}
+                                >
+                                    {isResolving ? (
+                                        <>
+                                            <RefreshCw className="w-4 h-4 animate-spin" />
+                                            Resolving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle2 className="w-4 h-4" />
+                                            Resolve Alert
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 }

@@ -2,6 +2,9 @@ import React, { Suspense, lazy, useState, useEffect, createContext, useContext }
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import Layout from './components/Layout/Layout';
+import ToastContainer from './components/Notifications/ToastContainer';
+import notificationService from './services/notifications';
+import { alertsAPI } from './services/api';
 
 // Lazy load pages
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -366,6 +369,55 @@ function ActivationPage() {
   );
 }
 
+// Notification Initializer - starts alert polling and Web Push when authenticated
+function NotificationInitializer() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Initialize Web Push notifications
+    // This sets up the service worker message listener for notification clicks
+    notificationService.initializePushNotifications((event) => {
+      console.log('[App] Notification clicked:', event);
+      // Navigate to the URL specified in the notification
+      if (event.url) {
+        navigate(event.url);
+      }
+    });
+
+    // Request notification permission on first load
+    if (notificationService.isNotificationSupported() && 
+        notificationService.getPermissionStatus() === 'default') {
+      // Delay permission request to not be intrusive
+      const timer = setTimeout(() => {
+        notificationService.requestPermission();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    // Start polling for new alerts
+    const fetchAlerts = async () => {
+      try {
+        const alerts = await alertsAPI.getAll();
+        return alerts;
+      } catch (error) {
+        console.error('[Notifications] Failed to fetch alerts:', error);
+        return [];
+      }
+    };
+
+    // Poll every 30 seconds
+    const stopPolling = notificationService.startAlertPolling(fetchAlerts, 30000);
+    
+    return () => {
+      stopPolling();
+    };
+  }, []);
+
+  return null; // This component doesn't render anything
+}
+
 // MAIN APP
 export default function App() {
   return (
@@ -378,6 +430,7 @@ export default function App() {
             <Route path="/activate" element={<ActivationPage />} />
             <Route path="/*" element={
               <ProtectedRoute>
+                <NotificationInitializer />
                 <Layout>
                   <Suspense fallback={<LoadingSpinner />}>
                     <Routes>
@@ -396,6 +449,8 @@ export default function App() {
           </Routes>
         </AppProvider>
       </AuthProvider>
+      {/* Global Toast Notifications */}
+      <ToastContainer />
     </BrowserRouter>
   );
 }
