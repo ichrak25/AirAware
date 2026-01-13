@@ -10,6 +10,7 @@ import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.ArrayList;
@@ -18,7 +19,7 @@ import java.util.logging.Logger;
 
 /**
  * Service to fetch user emails from the IAM database
- * Used for sending alert notifications to all registered users
+ * Used for sending alert notifications to registered users
  */
 @ApplicationScoped
 public class UserEmailService {
@@ -56,12 +57,12 @@ public class UserEmailService {
     }
 
     /**
-     * Get all email addresses of activated users
+     * Get email addresses of users who want to receive critical alerts only
      * @return List of email addresses
      */
     public List<String> getAllUserEmails() {
         List<String> emails = new ArrayList<>();
-        
+
         if (database == null) {
             LOGGER.warning("Database connection not available");
             return emails;
@@ -69,31 +70,36 @@ public class UserEmailService {
 
         try {
             MongoCollection<Document> identities = database.getCollection("identities");
-            
-            // Only get activated accounts with valid emails
-            for (Document doc : identities.find(Filters.eq("accountActivated", true))) {
+
+            // Filter: activated accounts + critical alerts enabled
+            Bson filter = Filters.and(
+                    Filters.eq("accountActivated", true),
+                    Filters.eq("notificationPreferences.criticalAlerts", true)
+            );
+
+            for (Document doc : identities.find(filter)) {
                 String email = doc.getString("email");
                 if (email != null && !email.trim().isEmpty() && email.contains("@")) {
                     emails.add(email.trim());
                 }
             }
-            
-            LOGGER.info("📧 Found " + emails.size() + " user emails for notifications");
+
+            LOGGER.info("📧 Found " + emails.size() + " user emails for critical notifications");
         } catch (Exception e) {
             LOGGER.severe("Failed to fetch user emails: " + e.getMessage());
         }
-        
+
         return emails;
     }
 
     /**
-     * Get emails of users with specific roles (for targeted notifications)
+     * Get emails of users with specific roles who want critical alerts
      * @param roleFilter Role bitmask to filter by (null for all users)
      * @return List of email addresses
      */
     public List<String> getUserEmailsByRole(Long roleFilter) {
         List<String> emails = new ArrayList<>();
-        
+
         if (database == null) {
             LOGGER.warning("Database connection not available");
             return emails;
@@ -101,8 +107,14 @@ public class UserEmailService {
 
         try {
             MongoCollection<Document> identities = database.getCollection("identities");
-            
-            for (Document doc : identities.find(Filters.eq("accountActivated", true))) {
+
+            // Base filter: activated + critical alerts
+            Bson filter = Filters.and(
+                    Filters.eq("accountActivated", true),
+                    Filters.eq("notificationPreferences.criticalAlerts", true)
+            );
+
+            for (Document doc : identities.find(filter)) {
                 // Check role if filter is provided
                 if (roleFilter != null) {
                     Long userRoles = doc.getLong("roles");
@@ -110,18 +122,48 @@ public class UserEmailService {
                         continue; // Skip users without matching role
                     }
                 }
-                
+
                 String email = doc.getString("email");
                 if (email != null && !email.trim().isEmpty() && email.contains("@")) {
                     emails.add(email.trim());
                 }
             }
-            
-            LOGGER.info("📧 Found " + emails.size() + " user emails for role filter: " + roleFilter);
+
+            LOGGER.info("📧 Found " + emails.size() + " user emails for critical notifications with role filter: " + roleFilter);
         } catch (Exception e) {
             LOGGER.severe("Failed to fetch user emails by role: " + e.getMessage());
         }
-        
+
+        return emails;
+    }
+
+    /**
+     * Get ALL user emails regardless of notification preferences (for backward compatibility)
+     * @return List of all email addresses
+     */
+    public List<String> getAllUserEmailsUnfiltered() {
+        List<String> emails = new ArrayList<>();
+
+        if (database == null) {
+            LOGGER.warning("Database connection not available");
+            return emails;
+        }
+
+        try {
+            MongoCollection<Document> identities = database.getCollection("identities");
+
+            for (Document doc : identities.find(Filters.eq("accountActivated", true))) {
+                String email = doc.getString("email");
+                if (email != null && !email.trim().isEmpty() && email.contains("@")) {
+                    emails.add(email.trim());
+                }
+            }
+
+            LOGGER.info("📧 Found " + emails.size() + " total user emails (unfiltered)");
+        } catch (Exception e) {
+            LOGGER.severe("Failed to fetch all user emails: " + e.getMessage());
+        }
+
         return emails;
     }
 
